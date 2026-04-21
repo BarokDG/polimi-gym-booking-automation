@@ -1,103 +1,20 @@
+import datetime as dt
+import os
+import smtplib
+import time
+from email.message import EmailMessage
+from random import gauss, randint
+from typing import Self
+
+import pyotp
+from dotenv import load_dotenv
 from selenium import webdriver
-from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
 
-from random import randint, gauss
-
-from dotenv import load_dotenv
-
-import os
-import time
-
-import pyotp
-
-import smtplib
-from email.message import EmailMessage
-
-import datetime as dt
-
 load_dotenv()
-
-gym_portal_page = "https://ecomm.sportrick.com/sportpolimi"
-credentials = {
-    "username": os.environ.get("USERNAME"),
-    "password": os.environ.get("PASSWORD"),
-}
-
-
-def sleep_for_a_bit(duration: int = None):
-    if duration is None:
-        duration = randint(1, 4)
-    time.sleep(duration)
-
-
-def fill_form_input_like_a_human(element: WebElement, text: str):
-    mean_delay = 0.12
-    std_dev = 0.04
-    min_delay = 0.05
-
-    for character in text:
-        delay = max(min_delay, gauss(mean_delay, std_dev))
-        element.send_keys(character)
-        time.sleep(delay)
-
-
-def input_username(driver: WebDriver):
-    username_input = driver.find_element(By.ID, "login")
-    fill_form_input_like_a_human(username_input, credentials["username"])
-
-
-def input_password(driver: WebDriver):
-    password_input = driver.find_element(By.ID, "password")
-    fill_form_input_like_a_human(password_input, credentials["password"])
-
-
-def click_login(driver: WebDriver):
-    login_button_container = driver.find_element(
-        By.CLASS_NAME, "aunicalogin-button-accedi"
-    )
-    login_button = login_button_container.find_element(By.TAG_NAME, "button")
-    login_button.click()
-
-
-def generate_otp():
-    return pyotp.TOTP(os.environ["TOKEN"]).now()
-
-
-def input_otp(driver: WebDriver):
-    otp_input = driver.find_element(By.ID, "otp")
-    fill_form_input_like_a_human(otp_input, generate_otp())
-
-
-def click_verify_otp(driver: WebDriver):
-    continue_button = driver.find_element(By.ID, "submit-dissms")
-    continue_button.click()
-
-
-def handle_sportrick_login(driver: WebDriver):
-    accedi_button = driver.find_element(
-        By.CSS_SELECTOR, 'button[type="submit"].green:not(.pull-right)'
-    )
-    accedi_button.click()
-
-
-def log_in(driver: WebDriver):
-    input_username(driver)
-    input_password(driver)
-
-    sleep_for_a_bit()
-
-    click_login(driver)
-
-
-def verify_otp(driver: WebDriver):
-    input_otp(driver)
-
-    sleep_for_a_bit()
-
-    click_verify_otp(driver)
 
 
 def get_default_chrome_options() -> Options:
@@ -106,48 +23,9 @@ def get_default_chrome_options() -> Options:
     return options
 
 
-def open_bookings_page(driver: WebDriver):
-    bookings_page_button = driver.find_element(
-        By.CSS_SELECTOR, "#home_btt_booking > div"
-    )
-    bookings_page_button.click()
-
-
-def open_new_booking_page(driver: WebDriver):
-    new_booking_button = driver.find_element(
-        By.CSS_SELECTOR, ".purple-plum.btn_nuovaprenotazione.standard-booking.btn"
-    )
-    new_booking_button.click()
-
-
-def open_giurati_fit_center_booking_page(driver: WebDriver):
-    fit_center_booking_button = driver.find_element(
-        By.CSS_SELECTOR, ".list-group-item:last-child"
-    )
-    fit_center_booking_button.click()
-
-
-def select_time_slot(driver: WebDriver):
-    time_slot = driver.find_element(
-        By.CSS_SELECTOR,
-        '#day-schedule-container [data-date-offset="0"] div.event-slot:last-child',
-    )
-    time_slot.click()
-
-
-def confirm_time_slot(driver: WebDriver):
-    confirm_booking_button = driver.find_element(By.ID, "btnConfirmAppointmentBooking")
-    confirm_booking_button.click()
-
-
 def book_time_slot(driver: WebDriver):
-    select_time_slot(driver)
-
-    sleep_for_a_bit()
-
-    confirm_time_slot(driver)
-
     # TODO: hit no when asked if you want to book another slot
+    pass
 
 
 def get_formatted_date() -> str:
@@ -157,7 +35,7 @@ def get_formatted_date() -> str:
 def prepare_email(screenshot: bytes) -> EmailMessage:
     msg = EmailMessage()
     msg["Subject"] = f"Booking for {get_formatted_date()}"
-    msg["From"] = "da server"
+    msg["From"] = "booking script"
     msg["To"] = os.environ.get("DESTINATION_EMAIL_ADDRESS")
     msg.add_attachment(screenshot, maintype="image", subtype="png")
     return msg
@@ -183,6 +61,130 @@ def send_screenshot(driver: WebDriver):
     email_screenshot(screenshot)
 
 
+class Page:
+    def __init__(self, driver: WebDriver):
+        self.driver = driver
+        self._sleep_for_a_bit()
+
+    def _sleep_for_a_bit(self, duration: int = None):
+        if duration is None:
+            duration = randint(1, 4)
+        time.sleep(duration)
+
+    def _fill_form_input_like_a_human(self, element: WebElement, text: str):
+        mean_delay = 0.12
+        std_dev = 0.04
+        min_delay = 0.05
+
+        for character in text:
+            delay = max(min_delay, gauss(mean_delay, std_dev))
+            element.send_keys(character)
+            time.sleep(delay)
+
+
+class ConfirmTimeSlotPage(Page):
+    def confirm(self) -> Self:
+        confirm_booking_button = self.driver.find_element(
+            By.ID, "btnConfirmAppointmentBooking"
+        )
+        confirm_booking_button.click()
+        return self
+
+
+class GiuratiFitCenterBookingPage(Page):
+    def book_time_slot(self) -> Self:
+        time_slot = self.driver.find_element(
+            By.CSS_SELECTOR,
+            '#day-schedule-container [data-date-offset="0"] div.event-slot:last-child',
+        )
+        time_slot.click()
+        return self
+
+
+class NewBookingPage(Page):
+    def select_giurati_fit_center(self) -> Self:
+        fit_center_booking_button = self.driver.find_element(
+            By.CSS_SELECTOR, ".list-group-item:last-child"
+        )
+        fit_center_booking_button.click()
+        return self
+
+
+class BookingsPage(Page):
+    def new_booking(self) -> Self:
+        new_booking_button = self.driver.find_element(
+            By.CSS_SELECTOR, ".purple-plum.btn_nuovaprenotazione.standard-booking.btn"
+        )
+        new_booking_button.click()
+        return self
+
+
+class DashboardPage(Page):
+    def go_to_bookings(self) -> Self:
+        bookings_page_button = self.driver.find_element(
+            By.CSS_SELECTOR, "#home_btt_booking > div"
+        )
+        bookings_page_button.click()
+        return self
+
+
+class VerifyOTPPage(Page):
+    def verify(self) -> Self:
+        self.__input_otp()
+        self.__click_verify_otp()
+        return self
+
+    def __input_otp(self):
+        otp_input = self.driver.find_element(By.ID, "otp")
+        self._fill_form_input_like_a_human(otp_input, self.__generate_otp())
+
+    def __click_verify_otp(self):
+        continue_button = self.driver.find_element(By.ID, "submit-dissms")
+        continue_button.click()
+
+    def __generate_otp(self) -> str:
+        return pyotp.TOTP(os.environ["TOKEN"]).now()
+
+
+class PolimiLoginPage(Page):
+    def login(self) -> Self:
+        self.__input_username()
+        self.__input_password()
+        self._sleep_for_a_bit()
+        self.__click_login()
+        return self
+
+    def __input_username(self):
+        username_input = self.driver.find_element(By.ID, "login")
+        self._fill_form_input_like_a_human(username_input, os.environ.get("USERNAME"))
+
+    def __input_password(self):
+        password_input = self.driver.find_element(By.ID, "password")
+        self._fill_form_input_like_a_human(password_input, os.environ.get("PASSWORD"))
+
+    def __click_login(self):
+        login_button_container = self.driver.find_element(
+            By.CLASS_NAME, "aunicalogin-button-accedi"
+        )
+        login_button = login_button_container.find_element(By.TAG_NAME, "button")
+        login_button.click()
+
+
+class SportRickLoginPage(Page):
+    __page_address = "https://ecomm.sportrick.com/sportpolimi"
+
+    def __init__(self, driver):
+        super().__init__(driver)
+        self.driver.get(self.__page_address)
+
+    def login(self) -> Self:
+        accedi_button = self.driver.find_element(
+            By.CSS_SELECTOR, 'button[type="submit"].green:not(.pull-right)'
+        )
+        accedi_button.click()
+        return self
+
+
 def main():
     options = get_default_chrome_options()
 
@@ -194,37 +196,18 @@ def main():
     driver: WebDriver = webdriver.Chrome(options=options)
     driver.implicitly_wait(10)
 
-    driver.get(gym_portal_page)
+    SportRickLoginPage(driver).login()
+    PolimiLoginPage(driver).login()
+    VerifyOTPPage(driver).verify()
+    DashboardPage(driver).go_to_bookings()
+    BookingsPage(driver).new_booking()
+    NewBookingPage(driver).select_giurati_fit_center()
 
-    handle_sportrick_login(driver)
+    # run the script every day around midnight so
+    # the time slot for the current day is available to be booked
+    GiuratiFitCenterBookingPage(driver).book_time_slot()
 
-    sleep_for_a_bit()
-
-    log_in(driver)
-
-    sleep_for_a_bit()
-
-    verify_otp(driver)
-
-    sleep_for_a_bit()
-
-    open_bookings_page(driver)
-
-    sleep_for_a_bit()
-
-    open_new_booking_page(driver)
-
-    sleep_for_a_bit()
-
-    open_giurati_fit_center_booking_page(driver)
-
-    sleep_for_a_bit()
-
-    # run the script every day around midnight
-
-    book_time_slot(driver)
-
-    sleep_for_a_bit()
+    ConfirmTimeSlotPage(driver).confirm()
 
     send_screenshot(driver)
 
