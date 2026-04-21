@@ -9,6 +9,7 @@ from typing import Self
 import pyotp
 from dotenv import load_dotenv
 from selenium import webdriver
+from selenium.common import ElementClickInterceptedException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.common.by import By
@@ -28,37 +29,44 @@ def book_time_slot(driver: WebDriver):
     pass
 
 
-def get_formatted_date() -> str:
-    return dt.datetime.now().strftime("%A %B %d")
+class EmailBookingConfirmation:
+    def __init__(self):
+        self.__smtp_server = smtplib.SMTP("smtp.gmail.com", 587)
+        self.__msg = EmailMessage()
+        self.__msg["Subject"] = self.__generate_email_subject()
+        self.__msg["From"] = "scripty"
+        self.__msg["To"] = os.environ.get("DESTINATION_EMAIL_ADDRESS")
 
+    def send_screenshot(self, screenshot: bytes) -> Self:
+        self.__msg.add_attachment(screenshot, maintype="image", subtype="png")
+        self.__send_email()
 
-def prepare_email(screenshot: bytes) -> EmailMessage:
-    msg = EmailMessage()
-    msg["Subject"] = f"Booking for {get_formatted_date()}"
-    msg["From"] = "booking script"
-    msg["To"] = os.environ.get("DESTINATION_EMAIL_ADDRESS")
-    msg.add_attachment(screenshot, maintype="image", subtype="png")
-    return msg
+    def __send_email(self):
+        if not self.__has_attachment():
+            raise Exception("Attachment missing")
 
+        self.__authenticate()
+        self.__smtp_server.send_message(self.__msg)
+        self.__terminate_session()
 
-def send_email(msg: EmailMessage):
-    smtp_server = smtplib.SMTP("smtp.gmail.com", 587)
-    smtp_server.starttls()
-    smtp_server.login(
-        os.environ.get("SMTP_EMAIL_ADDRESS"), os.environ.get("SMTP_PASSWORD")
-    )
-    smtp_server.send_message(msg)
-    smtp_server.quit()
+    def __authenticate(self):
+        self.__smtp_server.starttls()
+        self.__smtp_server.login(
+            os.environ.get("SMTP_EMAIL_ADDRESS"), os.environ.get("SMTP_PASSWORD")
+        )
 
+    def __terminate_session(self):
+        self.__smtp_server.quit()
 
-def email_screenshot(screenshot: bytes):
-    email = prepare_email(screenshot)
-    send_email(email)
+    def __generate_email_subject(self):
+        today = dt.datetime.now().strftime("%A %B %d")
+        return f"Booking for {today}"
 
-
-def send_screenshot(driver: WebDriver):
-    screenshot = driver.get_screenshot_as_png()
-    email_screenshot(screenshot)
+    def __has_attachment(self):
+        for part in self.__msg.walk():
+            if part.get_content_disposition() == "attachment" or part.get_filename():
+                return True
+        return False
 
 
 class Page:
@@ -81,6 +89,9 @@ class Page:
             element.send_keys(character)
             time.sleep(delay)
 
+    def _take_screenshot(self):
+        return self.driver.get_screenshot_as_png()
+
 
 class ConfirmTimeSlotPage(Page):
     def confirm(self) -> Self:
@@ -92,13 +103,25 @@ class ConfirmTimeSlotPage(Page):
 
 
 class GiuratiFitCenterBookingPage(Page):
+    # TODO: Make more robust, try booking a different slot if the last one is not available
     def book_time_slot(self) -> Self:
-        time_slot = self.driver.find_element(
-            By.CSS_SELECTOR,
-            '#day-schedule-container [data-date-offset="0"] div.event-slot:last-child',
-        )
-        time_slot.click()
+        try:
+            time_slot = self.driver.find_element(
+                By.CSS_SELECTOR,
+                '#day-schedule-container [data-date-offset="0"] div.event-slot:last-child',
+            )
+            time_slot.click()
+        except ElementClickInterceptedException:
+            pass
+
         return self
+
+    def __get_available_time_slots(self):
+        time_slots = self.driver.find_elements(
+            By.CSS_SELECTOR,
+            '#day-schedule-container [data-date-offset="0"] div.event-slot.slot-available',
+        )
+        return time_slots
 
 
 class NewBookingPage(Page):
@@ -209,7 +232,7 @@ def main():
 
     ConfirmTimeSlotPage(driver).confirm()
 
-    send_screenshot(driver)
+    EmailBookingConfirmation().send_screenshot(Page._take_screenshot())
 
     # time.sleep(10)
 
