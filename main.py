@@ -4,12 +4,11 @@ import smtplib
 import time
 from email.message import EmailMessage
 from random import gauss, randint
-from typing import Self
+from typing import Callable, Self
 
 import pyotp
 from dotenv import load_dotenv
 from selenium import webdriver
-from selenium.common import ElementClickInterceptedException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.common.by import By
@@ -24,9 +23,14 @@ def get_default_chrome_options() -> Options:
     return options
 
 
-def book_time_slot(driver: WebDriver):
-    # TODO: hit no when asked if you want to book another slot
-    pass
+def log_call(f: Callable) -> Callable:
+    def wrapper(*args, **kwds):
+        class_name = f.__self__.__class__.__name
+        method_name = f.__name__
+        print(f"Started {class_name} {method_name}")
+        return f(*args, **kwds)
+
+    return wrapper
 
 
 class EmailBookingConfirmation:
@@ -36,7 +40,9 @@ class EmailBookingConfirmation:
         self.__msg["Subject"] = self.__generate_email_subject()
         self.__msg["From"] = "scripty"
         self.__msg["To"] = os.environ.get("DESTINATION_EMAIL_ADDRESS")
+        self.__msg.set_content("I have done your bidding father")
 
+    @log_call
     def send_screenshot(self, screenshot: bytes) -> Self:
         self.__msg.add_attachment(screenshot, maintype="image", subtype="png")
         self.__send_email()
@@ -94,6 +100,7 @@ class Page:
 
 
 class ConfirmTimeSlotPage(Page):
+    @log_call
     def confirm(self) -> Self:
         confirm_booking_button = self.driver.find_element(
             By.ID, "btnConfirmAppointmentBooking"
@@ -101,19 +108,35 @@ class ConfirmTimeSlotPage(Page):
         confirm_booking_button.click()
         return self
 
+    @log_call
+    def say_no_to_booking_another_slot(self) -> Self:
+        self._sleep_for_a_bit()
+        no_button = self.driver.find_element(
+            By.CSS_SELECTOR, '#srModal_g_confirm_dialog [data-modalrole="cancel"]'
+        )
+        no_button.click()
+        return self
+
 
 class GiuratiFitCenterBookingPage(Page):
-    # TODO: Make more robust, try booking a different slot if the last one is not available
-    def book_time_slot(self) -> Self:
-        try:
-            time_slot = self.driver.find_element(
-                By.CSS_SELECTOR,
-                '#day-schedule-container [data-date-offset="0"] div.event-slot:last-child',
-            )
-            time_slot.click()
-        except ElementClickInterceptedException:
-            pass
+    @log_call
+    def accept_cookies(self) -> Self:
+        """Need this because the accept cookies button sits on top of some of the time slots and could raise an ElementClickInterceptedException."""
+        accept_cookies_button = self.driver.find_element(
+            By.CSS_SELECTOR, ".iubenda-cs-accept-btn.iubenda-cs-btn-primary"
+        )
+        accept_cookies_button.click()
+        return self
 
+    # TODO: Make more robust, try booking a different slot if the last one is not available
+    @log_call
+    def book_time_slot(self) -> Self:
+        self._sleep_for_a_bit()
+        time_slot = self.driver.find_element(
+            By.CSS_SELECTOR,
+            '#day-schedule-container [data-date-offset="0"] div.event-slot:last-child',
+        )
+        time_slot.click()
         return self
 
     def __get_available_time_slots(self):
@@ -125,6 +148,7 @@ class GiuratiFitCenterBookingPage(Page):
 
 
 class NewBookingPage(Page):
+    @log_call
     def select_giurati_fit_center(self) -> Self:
         fit_center_booking_button = self.driver.find_element(
             By.CSS_SELECTOR, ".list-group-item:last-child"
@@ -134,6 +158,7 @@ class NewBookingPage(Page):
 
 
 class BookingsPage(Page):
+    @log_call
     def new_booking(self) -> Self:
         new_booking_button = self.driver.find_element(
             By.CSS_SELECTOR, ".purple-plum.btn_nuovaprenotazione.standard-booking.btn"
@@ -143,6 +168,7 @@ class BookingsPage(Page):
 
 
 class DashboardPage(Page):
+    @log_call
     def go_to_bookings(self) -> Self:
         bookings_page_button = self.driver.find_element(
             By.CSS_SELECTOR, "#home_btt_booking > div"
@@ -152,6 +178,7 @@ class DashboardPage(Page):
 
 
 class VerifyOTPPage(Page):
+    @log_call
     def verify(self) -> Self:
         self.__input_otp()
         self.__click_verify_otp()
@@ -170,6 +197,7 @@ class VerifyOTPPage(Page):
 
 
 class PolimiLoginPage(Page):
+    @log_call
     def login(self) -> Self:
         self.__input_username()
         self.__input_password()
@@ -200,6 +228,7 @@ class SportRickLoginPage(Page):
         super().__init__(driver)
         self.driver.get(self.__page_address)
 
+    @log_call
     def login(self) -> Self:
         accedi_button = self.driver.find_element(
             By.CSS_SELECTOR, 'button[type="submit"].green:not(.pull-right)'
@@ -208,13 +237,27 @@ class SportRickLoginPage(Page):
         return self
 
 
+def should_book_today():
+    today = int(dt.datetime.now().strftime("%w"))
+
+    # 0 is Sunday, 6 is Saturday
+    if today == 0 or today == 6:
+        return False
+
+    return True
+
+
 def main():
+    if not should_book_today():
+        return
+
     options = get_default_chrome_options()
 
     # so the browser doesn't close after it finishes running.
     # will still close if driver.quit() is called
     # only for development
-    # options.add_experimental_option("detach", True)
+    if os.environ.get("ENV") == "dev":
+        options.add_experimental_option("detach", True)
 
     driver: WebDriver = webdriver.Chrome(options=options)
     driver.implicitly_wait(10)
@@ -226,15 +269,13 @@ def main():
     BookingsPage(driver).new_booking()
     NewBookingPage(driver).select_giurati_fit_center()
 
-    # run the script every day around midnight so
-    # the time slot for the current day is available to be booked
-    GiuratiFitCenterBookingPage(driver).book_time_slot()
+    GiuratiFitCenterBookingPage(driver).accept_cookies().book_time_slot()
 
-    ConfirmTimeSlotPage(driver).confirm()
+    confirmTimeSlotPage: ConfirmTimeSlotPage = (
+        ConfirmTimeSlotPage(driver).confirm().say_no_to_booking_another_slot()
+    )
 
-    EmailBookingConfirmation().send_screenshot(Page._take_screenshot())
-
-    # time.sleep(10)
+    EmailBookingConfirmation().send_screenshot(confirmTimeSlotPage._take_screenshot())
 
     driver.quit()
 
