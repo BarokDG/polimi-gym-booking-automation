@@ -25,9 +25,7 @@ def get_default_chrome_options() -> Options:
 
 def log_call(f: Callable) -> Callable:
     def wrapper(*args, **kwds):
-        class_name = f.__self__.__class__.__name
-        method_name = f.__name__
-        print(f"Started {class_name} {method_name}")
+        print(f"Started {f.__name__}")
         return f(*args, **kwds)
 
     return wrapper
