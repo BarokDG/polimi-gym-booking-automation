@@ -31,26 +31,14 @@ def log_call(f: Callable) -> Callable:
     return wrapper
 
 
-class EmailBookingConfirmation:
+class EmailSMTPClient:
     def __init__(self):
         self.__smtp_server = smtplib.SMTP("smtp.gmail.com", 587)
-        self.__msg = EmailMessage()
-        self.__msg["Subject"] = self.__generate_email_subject()
-        self.__msg["From"] = "scripty"
-        self.__msg["To"] = os.environ.get("DESTINATION_EMAIL_ADDRESS")
-        self.__msg.set_content("I have done your bidding father")
 
     @log_call
-    def send_screenshot(self, screenshot: bytes) -> Self:
-        self.__msg.add_attachment(screenshot, maintype="image", subtype="png")
-        self.__send_email()
-
-    def __send_email(self):
-        if not self.__has_attachment():
-            raise Exception("Attachment missing")
-
+    def send_email(self, msg):
         self.__authenticate()
-        self.__smtp_server.send_message(self.__msg)
+        self.__smtp_server.send_message(msg)
         self.__terminate_session()
 
     def __authenticate(self):
@@ -62,21 +50,48 @@ class EmailBookingConfirmation:
     def __terminate_session(self):
         self.__smtp_server.quit()
 
-    def __generate_email_subject(self):
-        today = dt.datetime.now().strftime("%A %B %d")
-        return f"Booking for {today}"
 
-    def __has_attachment(self):
-        for part in self.__msg.walk():
-            if part.get_content_disposition() == "attachment" or part.get_filename():
-                return True
-        return False
+class EmailBookingOutcome:
+    def __init__(self):
+        self.__smtp_client = EmailSMTPClient()
+        self.__msg = EmailMessage()
+        self.__msg["From"] = "me"
+        self.__msg["To"] = os.environ.get("DESTINATION_EMAIL_ADDRESS")
+
+    @log_call
+    def send_screenshot(self, screenshot: bytes) -> Self:
+        self.__msg["Subject"] = (
+            f"Gym successfully booked for {self.__format_booking_date()}"
+        )
+        self.__msg.set_content("I have done your bidding father")
+        self.__msg.add_attachment(screenshot, maintype="image", subtype="png")
+        self.__send_email()
+
+    @log_call
+    def send_error(self, error: Exception) -> Self:
+        self.__msg["Subject"] = (
+            f"Failed to book the gym for {self.__format_booking_date()}"
+        )
+        self.__msg.set_content(str(error))
+        self.__send_email()
+
+    def __send_email(self):
+        self.__smtp_client.send_email(self.__msg)
+
+    def __format_booking_date(self):
+        the_day_after_tomorrow = (dt.datetime.now() + dt.timedelta(days=2)).strftime(
+            "%A %B %d"
+        )
+        return f"Booking for {the_day_after_tomorrow}"
 
 
 class Page:
     def __init__(self, driver: WebDriver):
         self.driver = driver
         self._sleep_for_a_bit()
+
+    def take_screenshot(self):
+        return self.driver.get_screenshot_as_png()
 
     def _sleep_for_a_bit(self, duration: int = None):
         if duration is None:
@@ -92,9 +107,6 @@ class Page:
             delay = max(min_delay, gauss(mean_delay, std_dev))
             element.send_keys(character)
             time.sleep(delay)
-
-    def _take_screenshot(self):
-        return self.driver.get_screenshot_as_png()
 
 
 class ConfirmTimeSlotPage(Page):
@@ -130,9 +142,10 @@ class GiuratiFitCenterBookingPage(Page):
     @log_call
     def book_time_slot(self) -> Self:
         self._sleep_for_a_bit()
+        # offset 2 because we want to book for two days in advance
         time_slot = self.driver.find_element(
             By.CSS_SELECTOR,
-            '#day-schedule-container [data-date-offset="0"] div.event-slot:last-child',
+            '#day-schedule-container [data-date-offset="2"] div.event-slot:last-child',
         )
         time_slot.click()
         return self
@@ -140,7 +153,7 @@ class GiuratiFitCenterBookingPage(Page):
     def __get_available_time_slots(self):
         time_slots = self.driver.find_elements(
             By.CSS_SELECTOR,
-            '#day-schedule-container [data-date-offset="0"] div.event-slot.slot-available',
+            '#day-schedule-container [data-date-offset="2"] div.event-slot.slot-available',
         )
         return time_slots
 
@@ -236,10 +249,12 @@ class SportRickLoginPage(Page):
 
 
 def should_book_today():
+    # 0 is Sunday, 1 is Monday, ..., 6 is Saturday
+    # script books for the day after tomorrow, so we want to run it from Saturday to Wednesday to book for Monday to Friday.
+    days_to_book_this_week = [6, 0, 1, 2, 3]
     today = int(dt.datetime.now().strftime("%w"))
 
-    # 0 is Sunday, 6 is Saturday
-    if today == 0 or today == 6:
+    if today not in days_to_book_this_week:
         return False
 
     return True
@@ -260,20 +275,25 @@ def main():
     driver: WebDriver = webdriver.Chrome(options=options)
     driver.implicitly_wait(10)
 
-    SportRickLoginPage(driver).login()
-    PolimiLoginPage(driver).login()
-    VerifyOTPPage(driver).verify()
-    DashboardPage(driver).go_to_bookings()
-    BookingsPage(driver).new_booking()
-    NewBookingPage(driver).select_giurati_fit_center()
+    email_booking_outcome = EmailBookingOutcome()
 
-    GiuratiFitCenterBookingPage(driver).accept_cookies().book_time_slot()
+    try:
+        SportRickLoginPage(driver).login()
+        PolimiLoginPage(driver).login()
+        VerifyOTPPage(driver).verify()
+        DashboardPage(driver).go_to_bookings()
+        BookingsPage(driver).new_booking()
+        NewBookingPage(driver).select_giurati_fit_center()
 
-    confirmTimeSlotPage: ConfirmTimeSlotPage = (
-        ConfirmTimeSlotPage(driver).confirm().say_no_to_booking_another_slot()
-    )
+        GiuratiFitCenterBookingPage(driver).accept_cookies().book_time_slot()
 
-    EmailBookingConfirmation().send_screenshot(confirmTimeSlotPage._take_screenshot())
+        confirmTimeSlotPage: ConfirmTimeSlotPage = (
+            ConfirmTimeSlotPage(driver).confirm().say_no_to_booking_another_slot()
+        )
+
+        email_booking_outcome.send_screenshot(confirmTimeSlotPage.take_screenshot())
+    except Exception as e:
+        email_booking_outcome.send_error(e)
 
     driver.quit()
 
