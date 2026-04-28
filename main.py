@@ -48,7 +48,7 @@ class EmailSMTPClient:
         self.__smtp_server.quit()
 
 
-class EmailBookingOutcome:
+class EmailBookingOutcomeReporter:
     def __init__(self):
         self.__smtp_client = EmailSMTPClient()
         self.__msg = EmailMessage()
@@ -79,7 +79,7 @@ class EmailBookingOutcome:
         the_day_after_tomorrow = (dt.datetime.now() + dt.timedelta(days=2)).strftime(
             "%A %B %d"
         )
-        return f"Booking for {the_day_after_tomorrow}"
+        return the_day_after_tomorrow
 
 
 class Page:
@@ -167,6 +167,14 @@ class BookingsPage(Page):
 
 
 class DashboardPage(Page):
+    def is_loaded(self):
+        return (
+            self.driver.find_element(
+                By.CSS_SELECTOR, "#event-repository > .event-main-block.row"
+            )
+            is not None
+        )
+
     @log_call
     def accept_cookies(self) -> Self:
         """Need this because the accept cookies button sits on top of some of the time slots and could raise an ElementClickInterceptedException."""
@@ -183,6 +191,11 @@ class DashboardPage(Page):
         )
         bookings_page_button.click()
         return self
+
+    @log_call
+    def take_screenshot(self):
+        self.is_loaded()
+        return super().take_screenshot()
 
 
 class VerifyOTPPage(Page):
@@ -275,7 +288,9 @@ def should_book_today():
 
     """Need to adjust the days to book for because of the offset of 2 (booking two days in advance), so for example 
     on Saturday (6) we want to book for Monday (1), on Sunday (0) we want to book for Tuesday (2) and so on."""
-    days_to_book_adjusted_for_offset = [(x - 2) % 7 for x in days_to_book_this_week]
+    days_to_book_adjusted_for_offset = [
+        (x.value - 2) % 7 for x in days_to_book_this_week
+    ]
 
     today = int(dt.datetime.now().strftime("%w"))
     if today not in days_to_book_adjusted_for_offset:
@@ -309,25 +324,22 @@ def main():
     )
     driver.implicitly_wait(10)
 
-    email_booking_outcome = EmailBookingOutcome()
+    email_booking_outcome_reporter = EmailBookingOutcomeReporter()
 
     try:
         SportRickLoginPage(driver).accept_cookies().login()
         PolimiLoginPage(driver).login()
         VerifyOTPPage(driver).verify()
-        DashboardPage(driver).accept_cookies().go_to_bookings()
+        dashboardPage = DashboardPage(driver).accept_cookies().go_to_bookings()
         BookingsPage(driver).new_booking()
         NewBookingPage(driver).select_giurati_fit_center()
-
         GiuratiFitCenterBookingPage(driver).book_time_slot()
+        ConfirmTimeSlotPage(driver).confirm().say_no_to_booking_another_slot()
 
-        confirmTimeSlotPage: ConfirmTimeSlotPage = (
-            ConfirmTimeSlotPage(driver).confirm().say_no_to_booking_another_slot()
-        )
-
-        email_booking_outcome.send_screenshot(confirmTimeSlotPage.take_screenshot())
+        # dashboardPage will open after the booking is confirmed, so we can take the screenshot from there to show the successful booking
+        email_booking_outcome_reporter.send_screenshot(dashboardPage.take_screenshot())
     except Exception as e:
-        email_booking_outcome.send_error(e)
+        email_booking_outcome_reporter.send_error(e)
 
     if os.environ.get("ENV") != "dev":
         driver.quit()
