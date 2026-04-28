@@ -1,4 +1,5 @@
 import datetime as dt
+from enum import Enum
 import os
 import smtplib
 import time
@@ -13,14 +14,10 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
 
 load_dotenv()
-
-
-def get_default_chrome_options() -> Options:
-    options: Options = webdriver.ChromeOptions()
-    options.add_argument("--no-sandbox")
-    return options
 
 
 def log_call(f: Callable) -> Callable:
@@ -129,15 +126,6 @@ class ConfirmTimeSlotPage(Page):
 
 
 class GiuratiFitCenterBookingPage(Page):
-    @log_call
-    def accept_cookies(self) -> Self:
-        """Need this because the accept cookies button sits on top of some of the time slots and could raise an ElementClickInterceptedException."""
-        accept_cookies_button = self.driver.find_element(
-            By.CSS_SELECTOR, ".iubenda-cs-accept-btn.iubenda-cs-btn-primary"
-        )
-        accept_cookies_button.click()
-        return self
-
     # TODO: Make more robust, try booking a different slot if the last one is not available
     @log_call
     def book_time_slot(self) -> Self:
@@ -179,6 +167,15 @@ class BookingsPage(Page):
 
 
 class DashboardPage(Page):
+    @log_call
+    def accept_cookies(self) -> Self:
+        """Need this because the accept cookies button sits on top of some of the time slots and could raise an ElementClickInterceptedException."""
+        accept_cookies_button = self.driver.find_element(
+            By.CSS_SELECTOR, ".iubenda-cs-accept-btn.iubenda-cs-btn-primary"
+        )
+        accept_cookies_button.click()
+        return self
+
     @log_call
     def go_to_bookings(self) -> Self:
         bookings_page_button = self.driver.find_element(
@@ -240,6 +237,15 @@ class SportRickLoginPage(Page):
         self.driver.get(self.__page_address)
 
     @log_call
+    def accept_cookies(self) -> Self:
+        """Need this because the accept cookies button sits on top of some of the time slots and could raise an ElementClickInterceptedException."""
+        accept_cookies_button = self.driver.find_element(
+            By.CSS_SELECTOR, ".iubenda-cs-accept-btn.iubenda-cs-btn-primary"
+        )
+        accept_cookies_button.click()
+        return self
+
+    @log_call
     def login(self) -> Self:
         accedi_button = self.driver.find_element(
             By.CSS_SELECTOR, 'button[type="submit"].green:not(.pull-right)'
@@ -248,44 +254,72 @@ class SportRickLoginPage(Page):
         return self
 
 
-def should_book_today():
-    # 0 is Sunday, 1 is Monday, ..., 6 is Saturday
-    # script books for the day after tomorrow, so we want to run it from Saturday to Wednesday to book for Monday to Friday.
-    days_to_book_this_week = [6, 0, 1, 2, 3]
-    today = int(dt.datetime.now().strftime("%w"))
+class Weekday(Enum):
+    SUNDAY = 0
+    MONDAY = 1
+    TUESDAY = 2
+    WEDNESDAY = 3
+    THURSDAY = 4
+    FRIDAY = 5
+    SATURDAY = 6
 
-    if today not in days_to_book_this_week:
+
+def should_book_today():
+    days_to_book_this_week = [
+        Weekday.MONDAY,
+        Weekday.TUESDAY,
+        Weekday.WEDNESDAY,
+        Weekday.THURSDAY,
+        Weekday.FRIDAY,
+    ]
+
+    """Need to adjust the days to book for because of the offset of 2 (booking two days in advance), so for example 
+    on Saturday (6) we want to book for Monday (1), on Sunday (0) we want to book for Tuesday (2) and so on."""
+    days_to_book_adjusted_for_offset = [(x - 2) % 7 for x in days_to_book_this_week]
+
+    today = int(dt.datetime.now().strftime("%w"))
+    if today not in days_to_book_adjusted_for_offset:
         return False
 
     return True
+
+
+def get_chrome_driver_options() -> Options:
+    options: Options = webdriver.ChromeOptions()
+
+    options.add_argument("--no-sandbox")
+
+    if os.environ.get("ENV") == "dev":
+        # So the browser doesn't close after it finishes running. Will still close if driver.quit() is called.
+        options.add_experimental_option("detach", True)
+    else:
+        # To run in VPS environments without a display
+        options.add_argument("--headless")
+
+    return options
 
 
 def main():
     if not should_book_today():
         return
 
-    options = get_default_chrome_options()
-
-    # so the browser doesn't close after it finishes running.
-    # will still close if driver.quit() is called
-    # only for development
-    if os.environ.get("ENV") == "dev":
-        options.add_experimental_option("detach", True)
-
-    driver: WebDriver = webdriver.Chrome(options=options)
+    driver: WebDriver = webdriver.Chrome(
+        service=ChromeService(ChromeDriverManager().install()),
+        options=get_chrome_driver_options(),
+    )
     driver.implicitly_wait(10)
 
     email_booking_outcome = EmailBookingOutcome()
 
     try:
-        SportRickLoginPage(driver).login()
+        SportRickLoginPage(driver).accept_cookies().login()
         PolimiLoginPage(driver).login()
         VerifyOTPPage(driver).verify()
-        DashboardPage(driver).go_to_bookings()
+        DashboardPage(driver).accept_cookies().go_to_bookings()
         BookingsPage(driver).new_booking()
         NewBookingPage(driver).select_giurati_fit_center()
 
-        GiuratiFitCenterBookingPage(driver).accept_cookies().book_time_slot()
+        GiuratiFitCenterBookingPage(driver).book_time_slot()
 
         confirmTimeSlotPage: ConfirmTimeSlotPage = (
             ConfirmTimeSlotPage(driver).confirm().say_no_to_booking_another_slot()
@@ -295,7 +329,8 @@ def main():
     except Exception as e:
         email_booking_outcome.send_error(e)
 
-    driver.quit()
+    if os.environ.get("ENV") != "dev":
+        driver.quit()
 
 
 if __name__ == "__main__":
