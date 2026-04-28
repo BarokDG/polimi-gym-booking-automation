@@ -2,6 +2,33 @@
 
 An automated tool that books gym time slots at Polimi's Giurati Fit Center by simulating human-like interactions through web automation.
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Project Structure](#project-structure)
+- [Features](#features)
+- [Setup](#setup)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+- [Configuration](#configuration)
+  - [Environment Variables](#environment-variables)
+  - [Gmail Setup](#gmail-setup)
+- [Usage](#usage)
+- [Logging](#logging)
+- [Code Architecture](#code-architecture)
+- [Dependencies](#dependencies)
+- [Hosting & Scheduling](#hosting--scheduling)
+  - [Local Machine](#local-machine)
+  - [Cloud Hosting](#cloud-hosting)
+    - [Google Cloud Platform (GCP)](#google-cloud-platform-gcp---compute-engine)
+    - [Amazon Web Services (AWS)](#amazon-web-services-aws---ec2)
+    - [Microsoft Azure](#microsoft-azure---virtual-machines)
+- [Troubleshooting](#troubleshooting)
+  - [Common Issues](#common-issues)
+  - [Development Tips](#development-tips)
+- [Known Limitations](#known-limitations)
+- [Future Enhancements](#future-enhancements)
+
 ## Overview
 
 This project uses Selenium WebDriver to automate the gym booking process on the SportRick platform. It logs into the Polimi system, navigates through the booking flow, handles two-factor authentication via OTP, and automatically books a time slot at the Giurati Fit Center for two days in advance.
@@ -49,7 +76,7 @@ polimi-gym-booking-automation/
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://www.github.com/barokdg/polimi-gym-booking-automation
 cd polimi-gym-booking-automation
 ```
 
@@ -155,11 +182,13 @@ See [requirements.txt](requirements.txt) for the complete list. Key dependencies
 - **pyotp**: Generates TOTP codes for 2FA
 - **trio**: Async I/O library (required by selenium)
 
-## Scheduling
+## Hosting & Scheduling
 
-To run this script automatically at scheduled intervals, use:
+### Local Machine
 
-### macOS/Linux (cron)
+To run this script automatically at scheduled intervals on your local machine, use:
+
+#### macOS/Linux (cron)
 
 ```bash
 crontab -e
@@ -168,14 +197,90 @@ crontab -e
 Add a line to run daily at a specific time. For example, run at 8:00 AM:
 
 ```
-0 8 * * * cd /path/to/polimi-gym-booking-automation && source .venv/bin/activate && python main.py >> log.log 2>&1
+0 8 * * * DISPLAY=:0 /home/username/polimi-gym-booking-automation/.venv/bin/python3 /home/username/polimi-gym-booking-automation/main.py >> log.log 2>&1
 ```
 
-This command redirects both standard output and error messages to `log.log` for debugging and monitoring purposes.
+**⚠️ Important**: Your computer **must be powered on** for crontab to execute the scheduled task. If you find that this is not the case or have a workaround, please [create an issue](../../issues) or [submit a PR](../../pulls).
 
-### Windows (Task Scheduler)
+#### Windows (Task Scheduler)
 
 Create a task that runs the script at your desired interval using Windows Task Scheduler.
+
+### Cloud Hosting
+
+For continuous automated booking, cloud hosting ensures the script runs reliably without requiring your personal machine to be on.
+
+#### Google Cloud Platform (GCP) - Compute Engine
+
+**Setup Instructions:**
+
+1. Create a Compute Engine VM instance with Ubuntu 26.04 LTS (Minimal). Feel free to choose another VM.
+2. Connect to the instance via SSH
+3. Install required dependencies:
+
+```bash
+# Update package manager
+sudo apt update && sudo apt upgrade -y
+
+# Install git
+sudo apt install -y git
+
+# Install cron
+sudo apt install -y cron
+
+# Install vim or a text editor of your choice
+sudo apt install -y vim
+
+# Install Python and venv
+sudo apt install -y python3.14 python3.14-venv
+
+# Install Chrome and dependencies for Selenium
+wget wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo apt install google-chrome-stable_current_amd64.deb
+```
+
+4. Clone the repository:
+
+```bash
+git clone https://www.github.com/barokdg/polimi-gym-booking-automation.git
+cd polimi-gym-booking-automation
+```
+
+5. Create and activate virtual environment:
+
+```bash
+python3.14 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+6. Configure `.env` file with your credentials:
+
+```bash
+vim .env
+```
+
+7. Set up crontab:
+
+```bash
+crontab -e
+```
+
+Add the scheduling line (e.g., run at 8:00 AM UTC):
+
+```
+0 8 * * * DISPLAY=:0 /home/username/polimi-gym-booking-automation/.venv/bin/python3 /home/username/polimi-gym-booking-automation/main.py >> log.log 2>&1
+```
+
+**Cost Estimate**: A GCP e2-micro instance with minimal Ubuntu is eligible for the free tier (up to 730 hours/month for the first 12 months).
+
+#### Amazon Web Services (AWS) - EC2
+
+*Coming soon. Please refer to the GCP setup above as a general reference, adapting as needed for AWS EC2 instances.*
+
+#### Microsoft Azure - Virtual Machines
+
+*Coming soon. Please refer to the GCP setup above as a general reference, adapting as needed for Azure VMs.*
 
 ## Troubleshooting
 
