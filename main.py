@@ -5,7 +5,7 @@ import smtplib
 import time
 from email.message import EmailMessage
 from random import gauss, randint
-from typing import Callable, Self
+from typing import Callable, Self, TypeVar, ParamSpec
 
 import pyotp
 from dotenv import load_dotenv
@@ -19,11 +19,14 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 load_dotenv()
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
-def log_call(f: Callable) -> Callable:
+
+def log_call(fn: Callable[P, R]) -> Callable[P, R]:
     def wrapper(*args, **kwds):
-        print(f"Started {f.__name__}")
-        return f(*args, **kwds)
+        print(f"Started {fn.__name__}")
+        return fn(*args, **kwds)
 
     return wrapper
 
@@ -129,19 +132,19 @@ class ConfirmTimeSlotPage(Page):
         return self
 
     @log_call
-    def say_no_to_booking_another_slot(self) -> Self:
+    def say_no_to_booking_another_slot(self) -> "DashboardPage":
         self._sleep_for_a_bit()
         no_button = self.driver.find_element(
             By.CSS_SELECTOR, '#srModal_g_confirm_dialog [data-modalrole="cancel"]'
         )
         no_button.click()
-        return self
+        return DashboardPage(self.driver)
 
 
 class GiuratiFitCenterBookingPage(Page):
     # TODO: Make more robust, try booking a different slot if the last one is not available
     @log_call
-    def book_time_slot(self) -> Self:
+    def book_time_slot(self) -> ConfirmTimeSlotPage:
         self._sleep_for_a_bit()
         # offset 2 because we want to book for two days in advance
         time_slot = self.driver.find_element(
@@ -149,7 +152,7 @@ class GiuratiFitCenterBookingPage(Page):
             '#day-schedule-container [data-date-offset="2"] div.event-slot:last-child',
         )
         time_slot.click()
-        return self
+        return ConfirmTimeSlotPage(self.driver)
 
     def __get_available_time_slots(self):
         time_slots = self.driver.find_elements(
@@ -161,33 +164,25 @@ class GiuratiFitCenterBookingPage(Page):
 
 class NewBookingPage(Page):
     @log_call
-    def select_giurati_fit_center(self) -> Self:
+    def select_giurati_fit_center(self) -> GiuratiFitCenterBookingPage:
         fit_center_booking_button = self.driver.find_element(
             By.CSS_SELECTOR, ".list-group-item:last-child"
         )
         fit_center_booking_button.click()
-        return self
+        return GiuratiFitCenterBookingPage(self.driver)
 
 
 class BookingsPage(Page):
     @log_call
-    def new_booking(self) -> Self:
+    def new_booking(self) -> NewBookingPage:
         new_booking_button = self.driver.find_element(
             By.CSS_SELECTOR, ".purple-plum.btn_nuovaprenotazione.standard-booking.btn"
         )
         new_booking_button.click()
-        return self
+        return NewBookingPage(self.driver)
 
 
 class DashboardPage(Page):
-    def is_loaded(self):
-        return (
-            self.driver.find_element(
-                By.CSS_SELECTOR, "#event-repository > .event-main-block.row"
-            )
-            is not None
-        )
-
     @log_call
     def accept_cookies(self) -> Self:
         """Need this because the accept cookies button sits on top of some of the time slots and could raise an ElementClickInterceptedException."""
@@ -198,25 +193,33 @@ class DashboardPage(Page):
         return self
 
     @log_call
-    def go_to_bookings(self) -> Self:
+    def go_to_bookings(self) -> BookingsPage:
         bookings_page_button = self.driver.find_element(
             By.CSS_SELECTOR, "#home_btt_booking > div"
         )
         bookings_page_button.click()
-        return self
+        return BookingsPage(self.driver)
 
     @log_call
     def take_screenshot(self):
-        self.is_loaded()
+        self.__is_loaded()
         return super().take_screenshot()
+
+    def __is_loaded(self):
+        return (
+            self.driver.find_element(
+                By.CSS_SELECTOR, "#event-repository > .event-main-block.row"
+            )
+            is not None
+        )
 
 
 class VerifyOTPPage(Page):
     @log_call
-    def verify(self) -> Self:
+    def verify(self) -> DashboardPage:
         self.__input_otp()
         self.__click_verify_otp()
-        return self
+        return DashboardPage(self.driver)
 
     def __input_otp(self):
         otp_input = self.driver.find_element(By.ID, "otp")
@@ -232,12 +235,12 @@ class VerifyOTPPage(Page):
 
 class PolimiLoginPage(Page):
     @log_call
-    def login(self) -> Self:
+    def login(self) -> VerifyOTPPage:
         self.__input_username()
         self.__input_password()
         self._sleep_for_a_bit()
         self.__click_login()
-        return self
+        return VerifyOTPPage(self.driver)
 
     def __input_username(self):
         username_input = self.driver.find_element(By.ID, "login")
@@ -272,12 +275,12 @@ class SportRickLoginPage(Page):
         return self
 
     @log_call
-    def login(self) -> Self:
+    def login(self) -> PolimiLoginPage:
         accedi_button = self.driver.find_element(
             By.CSS_SELECTOR, 'button[type="submit"].green:not(.pull-right)'
         )
         accedi_button.click()
-        return self
+        return PolimiLoginPage(self.driver)
 
 
 class Weekday(Enum):
@@ -340,17 +343,20 @@ def main():
     email_booking_outcome_reporter = EmailBookingOutcomeReporter()
 
     try:
-        SportRickLoginPage(driver).accept_cookies().login()
-        PolimiLoginPage(driver).login()
-        VerifyOTPPage(driver).verify()
-        dashboardPage = DashboardPage(driver).accept_cookies().go_to_bookings()
-        BookingsPage(driver).new_booking()
-        NewBookingPage(driver).select_giurati_fit_center()
-        GiuratiFitCenterBookingPage(driver).book_time_slot()
-        ConfirmTimeSlotPage(driver).confirm().say_no_to_booking_another_slot()
+        sport_rick_login_page = SportRickLoginPage(driver)
+        polimi_login_page = sport_rick_login_page.accept_cookies().login()
+        verify_otp_page = polimi_login_page.login()
+        dashboard_page = verify_otp_page.verify()
+        bookings_page = dashboard_page.accept_cookies().go_to_bookings()
+        new_booking_page = bookings_page.new_booking()
+        giurati_fit_center_booking_page = new_booking_page.select_giurati_fit_center()
+        confirm_time_slot_page = giurati_fit_center_booking_page.book_time_slot()
 
-        # dashboardPage will open after the booking is confirmed, so we can take the screenshot from there to show the successful booking
-        email_booking_outcome_reporter.report_success(dashboardPage.take_screenshot())
+        dashboard_page = (
+            confirm_time_slot_page.confirm().say_no_to_booking_another_slot()
+        )
+
+        email_booking_outcome_reporter.report_success(dashboard_page.take_screenshot())
     except Exception as e:
         email_booking_outcome_reporter.report_failure(e)
 
