@@ -51,35 +51,48 @@ class EmailSMTPClient:
 class EmailBookingOutcomeReporter:
     def __init__(self):
         self.__smtp_client = EmailSMTPClient()
-        self.__msg = EmailMessage()
-        self.__msg["From"] = "me"
-        self.__msg["To"] = os.environ.get("DESTINATION_EMAIL_ADDRESS")
 
     @log_call
-    def send_screenshot(self, screenshot: bytes) -> Self:
-        self.__msg["Subject"] = (
-            f"Gym successfully booked for {self.__format_booking_date()}"
-        )
-        self.__msg.set_content("I have done your bidding father")
-        self.__msg.add_attachment(screenshot, maintype="image", subtype="png")
-        self.__send_email()
+    def report_success(self, screenshot: bytes):
+        msg = EmailMessage()
+        msg = self.__set_addressing_info(msg)
+        msg["Subject"] = f"Gym successfully booked for {self.__format_booking_date()}"
+        msg.set_content("I have done your bidding father")
+        msg = self.__attach_screenshot(msg, screenshot)
+        self.__send_email(msg)
 
     @log_call
-    def send_error(self, error: Exception) -> Self:
-        self.__msg["Subject"] = (
-            f"Failed to book the gym for {self.__format_booking_date()}"
-        )
-        self.__msg.set_content(str(error))
-        self.__send_email()
+    def report_failure(self, error: Exception, screenshot: bytes = None):
+        msg = EmailMessage()
+        msg = self.__set_addressing_info(msg)
+        msg["Subject"] = f"Failed to book the gym for {self.__format_booking_date()}"
+        msg.set_content(str(error))
+        if screenshot is not None:
+            self.__attach_screenshot(msg, screenshot)
+        self.__send_email(msg)
 
-    def __send_email(self):
-        self.__smtp_client.send_email(self.__msg)
+    def __send_email(self, msg: EmailMessage):
+        self.__smtp_client.send_email(msg)
 
     def __format_booking_date(self):
         the_day_after_tomorrow = (dt.datetime.now() + dt.timedelta(days=2)).strftime(
             "%A %B %d"
         )
         return the_day_after_tomorrow
+
+    def __attach_screenshot(self, msg: EmailMessage, screenshot: bytes) -> EmailMessage:
+        msg.add_attachment(screenshot, maintype="image", subtype="png")
+        return msg
+
+    def __set_addressing_info(
+        self,
+        msg: EmailMessage,
+        email_from: str = "me",
+        email_to: str = os.environ.get("DESTINATION_EMAIL_ADDRESS"),
+    ) -> EmailMessage:
+        msg["From"] = email_from
+        msg["To"] = email_to
+        return msg
 
 
 class Page:
@@ -337,9 +350,9 @@ def main():
         ConfirmTimeSlotPage(driver).confirm().say_no_to_booking_another_slot()
 
         # dashboardPage will open after the booking is confirmed, so we can take the screenshot from there to show the successful booking
-        email_booking_outcome_reporter.send_screenshot(dashboardPage.take_screenshot())
+        email_booking_outcome_reporter.report_success(dashboardPage.take_screenshot())
     except Exception as e:
-        email_booking_outcome_reporter.send_error(e)
+        email_booking_outcome_reporter.report_failure(e)
 
     if os.environ.get("ENV") != "dev":
         driver.quit()
