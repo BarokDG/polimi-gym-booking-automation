@@ -36,7 +36,6 @@ This project uses Selenium WebDriver to automate the gym booking process on the 
 The tool mimics human behavior by:
 - Adding random delays between actions
 - Typing text with human-like keystroke delays
-- Respecting page load times
 
 Upon successful booking, it sends a screenshot confirmation email. If an error occurs, it sends an error report email.
 
@@ -51,17 +50,6 @@ polimi-gym-booking-automation/
 ├── log.log                # Application log file (optionally generated at runtime)
 └── README.md              # This file
 ```
-
-## Features
-
-- **Automated Login**: Authenticates with Polimi credentials
-- **OTP Verification**: Generates and enters one-time passwords for 2FA using TOTP
-- **Smart Booking**: Books the latest available time slot for two days in advance
-- **Email Notifications**: Sends confirmation or error emails via Gmail SMTP
-- **Human-like Interaction**: Simulates natural user behavior with random delays
-- **Environment-aware Execution**: Supports both development and production modes
-- **Intelligent Scheduling**: Only books on weekdays
-- **Headless Support**: Can run in headless mode for server environments
 
 ## Setup
 
@@ -135,7 +123,7 @@ python main.py
 ```
 
 The script will:
-1. Check if today is a valid booking day (Monday-Friday, adjusted for 2-day advance booking)
+1. Check if today is a valid booking day (Monday-Friday in my case, adjusted for 2-day advance booking)
 2. Initialize a Chrome WebDriver with appropriate options
 3. Log into SportRick platform
 4. Authenticate with Polimi credentials
@@ -180,7 +168,6 @@ See [requirements.txt](requirements.txt) for the complete list. Key dependencies
 - **webdriver-manager**: Automatically manages ChromeDriver versions
 - **python-dotenv**: Loads environment variables from .env
 - **pyotp**: Generates TOTP codes for 2FA
-- **trio**: Async I/O library (required by selenium)
 
 ## Hosting & Scheduling
 
@@ -208,7 +195,7 @@ Create a task that runs the script at your desired interval using Windows Task S
 
 ### Cloud Hosting
 
-For continuous automated booking, cloud hosting ensures the script runs reliably without requiring your personal machine to be on.
+Cloud hosting ensures the script runs reliably without requiring your personal machine to be on.
 
 #### Google Cloud Platform (GCP) - Compute Engine
 
@@ -235,7 +222,7 @@ sudo apt install -y vim
 sudo apt install -y python3.14 python3.14-venv
 
 # Install Chrome and dependencies for Selenium
-wget wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 sudo apt install google-chrome-stable_current_amd64.deb
 ```
 
@@ -276,11 +263,11 @@ Add the scheduling line (e.g., run at 8:00 AM UTC):
 
 #### Amazon Web Services (AWS) - EC2
 
-*Coming soon. Please refer to the GCP setup above as a general reference, adapting as needed for AWS EC2 instances.*
+*Please refer to the GCP setup above as a general reference, adapting as needed for AWS EC2 instances.*
 
 #### Microsoft Azure - Virtual Machines
 
-*Coming soon. Please refer to the GCP setup above as a general reference, adapting as needed for Azure VMs.*
+*Please refer to the GCP setup above as a general reference, adapting as needed for Azure VMs.*
 
 ## Troubleshooting
 
@@ -300,7 +287,6 @@ Add the scheduling line (e.g., run at 8:00 AM UTC):
 
 - Set `ENV=dev` to keep the browser window open for inspection
 - Use `log.log` to review execution history
-- The script includes various `time.sleep()` calls with random durations to simulate human behavior
 
 ## Future Enhancements
 
