@@ -318,10 +318,8 @@ def should_book_today():
 def get_chrome_driver_options() -> Options:
     options: Options = webdriver.ChromeOptions()
 
-    options.add_argument("--no-sandbox")
-
     if os.environ.get("ENV") == "dev":
-        # So the browser doesn't close after it finishes running. Will still close if driver.quit() is called.
+        # So the browser doesn't close after the script finishes. Will still close if driver.quit() is called.
         options.add_experimental_option("detach", True)
     else:
         # To run in VPS environments without a display
@@ -358,7 +356,7 @@ def main():
 
         email_booking_outcome_reporter.report_success(dashboard_page.take_screenshot())
     except Exception as e:
-        email_booking_outcome_reporter.report_failure(e)
+        email_booking_outcome_reporter.report_failure(e, driver.get_screenshot_as_png())
 
     if os.environ.get("ENV") != "dev":
         driver.quit()
