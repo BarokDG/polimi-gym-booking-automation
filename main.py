@@ -329,6 +329,9 @@ def get_chrome_driver_options() -> Options:
 
 
 def main():
+    print("----------Starting booking automation----------")
+    print(dt.datetime.now().isoformat())
+
     if not should_book_today():
         return
 
@@ -360,6 +363,8 @@ def main():
 
     if os.environ.get("ENV") != "dev":
         driver.quit()
+
+    print("----------Ending booking automation----------\n")
 
 
 if __name__ == "__main__":
