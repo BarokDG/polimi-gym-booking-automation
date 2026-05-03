@@ -51,7 +51,7 @@ class EmailSMTPClient:
         self.__smtp_server.quit()
 
 
-class EmailBookingOutcomeReporter:
+class BookingOutcomeReporter:
     def __init__(self):
         self.__smtp_client = EmailSMTPClient()
 
@@ -315,10 +315,10 @@ def should_book_today():
     return True
 
 
-def get_chrome_driver_options() -> Options:
+def get_chrome_driver_options(is_dev_mode: bool = False) -> Options:
     options: Options = webdriver.ChromeOptions()
 
-    if os.environ.get("ENV") == "dev":
+    if is_dev_mode:
         # So the browser doesn't close after the script finishes. Will still close if driver.quit() is called.
         options.add_experimental_option("detach", True)
     else:
@@ -328,20 +328,17 @@ def get_chrome_driver_options() -> Options:
     return options
 
 
-def main():
-    print("----------Starting booking automation----------")
-    print(dt.datetime.now().isoformat())
-
-    if not should_book_today():
-        return
+def process_booking():
+    is_dev_mode = os.environ.get("ENV") == "dev"
 
     driver: WebDriver = webdriver.Chrome(
-        service=ChromeService(ChromeDriverManager().install()),
-        options=get_chrome_driver_options(),
+        service=None if is_dev_mode else ChromeService(ChromeDriverManager().install()),
+        options=get_chrome_driver_options(is_dev_mode),
     )
+    driver.set_window_size(1280, 720)
     driver.implicitly_wait(10)
 
-    email_booking_outcome_reporter = EmailBookingOutcomeReporter()
+    booking_outcome_reporter = BookingOutcomeReporter()
 
     try:
         sport_rick_login_page = SportRickLoginPage(driver)
@@ -357,12 +354,20 @@ def main():
             confirm_time_slot_page.confirm().say_no_to_booking_another_slot()
         )
 
-        email_booking_outcome_reporter.report_success(dashboard_page.take_screenshot())
+        booking_outcome_reporter.report_success(dashboard_page.take_screenshot())
     except Exception as e:
-        email_booking_outcome_reporter.report_failure(e, driver.get_screenshot_as_png())
+        booking_outcome_reporter.report_failure(e, driver.get_screenshot_as_png())
 
-    if os.environ.get("ENV") != "dev":
+    if not is_dev_mode:
         driver.quit()
+
+
+def main():
+    print("----------Starting booking automation----------")
+    print(dt.datetime.now().isoformat())
+
+    if should_book_today():
+        process_booking()
 
     print("----------Ending booking automation----------\n")
 
