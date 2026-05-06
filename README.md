@@ -58,7 +58,7 @@ polimi-gym-booking-automation/
 - Python 3.8 or higher
 - Google Chrome browser installed
 - Gmail account with app-specific password configured
-- Polimi credentials with 2FA enabled
+- Polimi credentials
 
 ### Installation
 

@@ -23,6 +23,91 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 
+class Weekday(Enum):
+    SUNDAY = 0
+    MONDAY = 1
+    TUESDAY = 2
+    WEDNESDAY = 3
+    THURSDAY = 4
+    FRIDAY = 5
+    SATURDAY = 6
+
+
+class WeekdayAvailableTimeSlots(Enum):
+    SLOT_1 = {
+        "label": "7:00-8:30",
+        "index": 1,
+    }
+    SLOT_2 = {
+        "label": "8:30-10:00",
+        "index": 2,
+    }
+    SLOT_3 = {
+        "label": "10:00-11:30",
+        "index": 3,
+    }
+    SLOT_4 = {
+        "label": "11:30-13:00",
+        "index": 4,
+    }
+    SLOT_5 = {
+        "label": "13:00-14:30",
+        "index": 5,
+    }
+    SLOT_6 = {
+        "label": "14:30-16:00",
+        "index": 6,
+    }
+    SLOT_7 = {
+        "label": "16:00-17:30",
+        "index": 7,
+    }
+    SLOT_8 = {
+        "label": "17:30-19:00",
+        "index": 8,
+    }
+    SLOT_9 = {
+        "label": "19:00-20:30",
+        "index": 9,
+    }
+    SLOT_10 = {
+        "label": "20:30-22:00",
+        "index": 10,
+    }
+
+
+class WeekendAvailableTimeSlots(Enum):
+    SLOT_1 = {
+        "label": "9:00-10:30",
+        "index": 1,
+    }
+    SLOT_2 = {
+        "label": "10:30-12:00",
+        "index": 2,
+    }
+    SLOT_3 = {
+        "label": "12:00-13:30",
+        "index": 3,
+    }
+    SLOT_4 = {
+        "label": "13:30-15:00",
+        "index": 4,
+    }
+    SLOT_5 = {
+        "label": "15:00-16:30",
+        "index": 5,
+    }
+    SLOT_6 = {
+        "label": "16:30-18:00",
+        "index": 6,
+    }
+
+
+BookingPreferences = dict[
+    Weekday, WeekdayAvailableTimeSlots | WeekendAvailableTimeSlots
+]
+
+
 def log_call(fn: Callable[P, R]) -> Callable[P, R]:
     def wrapper(*args, **kwds):
         print(f"Started {fn.__name__}")
@@ -144,22 +229,15 @@ class ConfirmTimeSlotPage(Page):
 class GiuratiFitCenterBookingPage(Page):
     # TODO: Make more robust, try booking a different slot if the last one is not available
     @log_call
-    def book_time_slot(self) -> ConfirmTimeSlotPage:
+    def book_time_slot(self, time_slot_index: int) -> ConfirmTimeSlotPage:
         self._sleep_for_a_bit()
         # offset 2 because we want to book for two days in advance
         time_slot = self.driver.find_element(
             By.CSS_SELECTOR,
-            '#day-schedule-container [data-date-offset="2"] div.event-slot:last-child',
+            f'#day-schedule-container [data-date-offset="2"] div.event-slot:nth-child({time_slot_index})',
         )
         time_slot.click()
         return ConfirmTimeSlotPage(self.driver)
-
-    def __get_available_time_slots(self):
-        time_slots = self.driver.find_elements(
-            By.CSS_SELECTOR,
-            '#day-schedule-container [data-date-offset="2"] div.event-slot.slot-available',
-        )
-        return time_slots
 
 
 class NewBookingPage(Page):
@@ -283,38 +361,6 @@ class SportRickLoginPage(Page):
         return PolimiLoginPage(self.driver)
 
 
-class Weekday(Enum):
-    SUNDAY = 0
-    MONDAY = 1
-    TUESDAY = 2
-    WEDNESDAY = 3
-    THURSDAY = 4
-    FRIDAY = 5
-    SATURDAY = 6
-
-
-def should_book_today():
-    days_to_book_this_week = [
-        Weekday.MONDAY,
-        Weekday.TUESDAY,
-        Weekday.WEDNESDAY,
-        Weekday.THURSDAY,
-        Weekday.FRIDAY,
-    ]
-
-    """Need to adjust the days to book for because of the offset of 2 (booking two days in advance), so for example 
-    on Saturday (6) we want to book for Monday (1), on Sunday (0) we want to book for Tuesday (2) and so on."""
-    days_to_book_adjusted_for_offset = [
-        (x.value - 2) % 7 for x in days_to_book_this_week
-    ]
-
-    today = int(dt.datetime.now().strftime("%w"))
-    if today not in days_to_book_adjusted_for_offset:
-        return False
-
-    return True
-
-
 def get_chrome_driver_options(is_dev_mode: bool = False) -> Options:
     options: Options = webdriver.ChromeOptions()
 
@@ -328,15 +374,48 @@ def get_chrome_driver_options(is_dev_mode: bool = False) -> Options:
     return options
 
 
-def process_booking():
-    is_dev_mode = os.environ.get("ENV") == "dev"
-
+def initialize_driver(is_dev_mode: bool = False) -> WebDriver:
     driver: WebDriver = webdriver.Chrome(
         service=None if is_dev_mode else ChromeService(ChromeDriverManager().install()),
         options=get_chrome_driver_options(is_dev_mode),
     )
     driver.set_window_size(1280, 720)
     driver.implicitly_wait(10)
+    return driver
+
+
+def get_weekday_index_for_today() -> int:
+    return int(dt.datetime.now().strftime("%w"))
+
+
+def get_time_slot_index_for_today(booking_preferences: BookingPreferences) -> int:
+    today = get_weekday_index_for_today()
+    return booking_preferences.get(Weekday(today)).value["index"]
+
+
+def should_book_today(days_to_book_this_week: list[Weekday]):
+    """Need to adjust the days to book for, because of the offset of 2 (booking two days in advance). For example,
+    on Saturday (6) we want to book for Monday (1), on Sunday (0) we want to book for Tuesday (2) and so on."""
+    days_to_book_adjusted_for_offset = [
+        (x.value - 2) % 7 for x in days_to_book_this_week
+    ]
+
+    today = get_weekday_index_for_today()
+    if today not in days_to_book_adjusted_for_offset:
+        return False
+
+    return True
+
+
+def process_booking(
+    booking_preferences: BookingPreferences,
+):
+    if not should_book_today(days_to_book_this_week=list(booking_preferences)):
+        return
+
+    is_dev_mode = os.environ.get("ENV") == "dev"
+
+    driver = initialize_driver(is_dev_mode)
 
     booking_outcome_reporter = BookingOutcomeReporter()
 
@@ -348,7 +427,9 @@ def process_booking():
         bookings_page = dashboard_page.accept_cookies().go_to_bookings()
         new_booking_page = bookings_page.new_booking()
         giurati_fit_center_booking_page = new_booking_page.select_giurati_fit_center()
-        confirm_time_slot_page = giurati_fit_center_booking_page.book_time_slot()
+        confirm_time_slot_page = giurati_fit_center_booking_page.book_time_slot(
+            get_time_slot_index_for_today(booking_preferences)
+        )
 
         dashboard_page = (
             confirm_time_slot_page.confirm().say_no_to_booking_another_slot()
@@ -366,8 +447,15 @@ def main():
     print("----------Starting booking automation----------")
     print(dt.datetime.now().isoformat())
 
-    if should_book_today():
-        process_booking()
+    booking_preferences: BookingPreferences = {
+        Weekday.MONDAY: WeekdayAvailableTimeSlots.SLOT_10,
+        Weekday.TUESDAY: WeekdayAvailableTimeSlots.SLOT_10,
+        Weekday.WEDNESDAY: WeekdayAvailableTimeSlots.SLOT_10,
+        Weekday.THURSDAY: WeekdayAvailableTimeSlots.SLOT_10,
+        Weekday.FRIDAY: WeekdayAvailableTimeSlots.SLOT_10,
+    }
+
+    process_booking(booking_preferences)
 
     print("----------Ending booking automation----------\n")
 
