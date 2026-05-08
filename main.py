@@ -19,6 +19,13 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 load_dotenv()
 
+IS_DEV_ENV = os.environ.get("ENV") == "dev"
+SMTP_EMAIL_ADDRESS = os.environ.get("SMTP_EMAIL_ADDRESS")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
+DESTINATION_EMAIL_ADDRESS = os.environ.get("DESTINATION_EMAIL_ADDRESS")
+USERNAME = os.environ.get("USERNAME")
+PASSWORD = os.environ.get("PASSWORD")
+
 P = ParamSpec("P")
 R = TypeVar("R")
 
@@ -128,9 +135,7 @@ class EmailSMTPClient:
 
     def __authenticate(self):
         self.__smtp_server.starttls()
-        self.__smtp_server.login(
-            os.environ.get("SMTP_EMAIL_ADDRESS"), os.environ.get("SMTP_PASSWORD")
-        )
+        self.__smtp_server.login(SMTP_EMAIL_ADDRESS, SMTP_PASSWORD)
 
     def __terminate_session(self):
         self.__smtp_server.quit()
@@ -176,7 +181,7 @@ class BookingOutcomeReporter:
         self,
         msg: EmailMessage,
         email_from: str = "me",
-        email_to: str = os.environ.get("DESTINATION_EMAIL_ADDRESS"),
+        email_to: str = DESTINATION_EMAIL_ADDRESS,
     ) -> EmailMessage:
         msg["From"] = email_from
         msg["To"] = email_to
@@ -322,11 +327,11 @@ class PolimiLoginPage(Page):
 
     def __input_username(self):
         username_input = self.driver.find_element(By.ID, "login")
-        self._fill_form_input_like_a_human(username_input, os.environ.get("USERNAME"))
+        self._fill_form_input_like_a_human(username_input, USERNAME)
 
     def __input_password(self):
         password_input = self.driver.find_element(By.ID, "password")
-        self._fill_form_input_like_a_human(password_input, os.environ.get("PASSWORD"))
+        self._fill_form_input_like_a_human(password_input, PASSWORD)
 
     def __click_login(self):
         login_button_container = self.driver.find_element(
@@ -361,10 +366,10 @@ class SportRickLoginPage(Page):
         return PolimiLoginPage(self.driver)
 
 
-def get_chrome_driver_options(is_dev_mode: bool = False) -> Options:
+def get_chrome_driver_options() -> Options:
     options: Options = webdriver.ChromeOptions()
 
-    if is_dev_mode:
+    if IS_DEV_ENV:
         # So the browser doesn't close after the script finishes. Will still close if driver.quit() is called.
         options.add_experimental_option("detach", True)
     else:
@@ -374,10 +379,10 @@ def get_chrome_driver_options(is_dev_mode: bool = False) -> Options:
     return options
 
 
-def initialize_driver(is_dev_mode: bool = False) -> WebDriver:
+def initialize_driver() -> WebDriver:
     driver: WebDriver = webdriver.Chrome(
-        service=None if is_dev_mode else ChromeService(ChromeDriverManager().install()),
-        options=get_chrome_driver_options(is_dev_mode),
+        service=None if IS_DEV_ENV else ChromeService(ChromeDriverManager().install()),
+        options=get_chrome_driver_options(IS_DEV_ENV),
     )
     driver.set_window_size(1280, 720)
     driver.implicitly_wait(10)
@@ -413,9 +418,7 @@ def process_booking(
     if not should_book_today(days_to_book_this_week=list(booking_preferences)):
         return
 
-    is_dev_mode = os.environ.get("ENV") == "dev"
-
-    driver = initialize_driver(is_dev_mode)
+    driver = initialize_driver()
 
     booking_outcome_reporter = BookingOutcomeReporter()
 
@@ -439,7 +442,7 @@ def process_booking(
     except Exception as e:
         booking_outcome_reporter.report_failure(e, driver.get_screenshot_as_png())
 
-    if not is_dev_mode:
+    if not IS_DEV_ENV:
         driver.quit()
 
 
