@@ -26,18 +26,23 @@ DESTINATION_EMAIL_ADDRESS = os.environ.get("DESTINATION_EMAIL_ADDRESS")
 USERNAME = os.environ.get("USERNAME")
 PASSWORD = os.environ.get("PASSWORD")
 
-P = ParamSpec("P")
-R = TypeVar("R")
-
 
 class Weekday(Enum):
-    SUNDAY = 0
-    MONDAY = 1
-    TUESDAY = 2
-    WEDNESDAY = 3
-    THURSDAY = 4
-    FRIDAY = 5
-    SATURDAY = 6
+    MONDAY = 0
+    TUESDAY = 1
+    WEDNESDAY = 2
+    THURSDAY = 3
+    FRIDAY = 4
+    SATURDAY = 5
+    SUNDAY = 6
+
+    @classmethod
+    def today(cls) -> "Weekday":
+        return cls(dt.datetime.today().weekday())
+
+    @classmethod
+    def day_after_tomorrow(cls) -> "Weekday":
+        return cls((dt.datetime.today().weekday() + 2) % 7)
 
 
 class WeekdayAvailableTimeSlots(Enum):
@@ -113,6 +118,10 @@ class WeekendAvailableTimeSlots(Enum):
 BookingPreferences = dict[
     Weekday, WeekdayAvailableTimeSlots | WeekendAvailableTimeSlots
 ]
+
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
 def log_call(fn: Callable[P, R]) -> Callable[P, R]:
@@ -382,31 +391,26 @@ def get_chrome_driver_options() -> Options:
 def initialize_driver() -> WebDriver:
     driver: WebDriver = webdriver.Chrome(
         service=None if IS_DEV_ENV else ChromeService(ChromeDriverManager().install()),
-        options=get_chrome_driver_options(IS_DEV_ENV),
+        options=get_chrome_driver_options(),
     )
     driver.set_window_size(1280, 720)
     driver.implicitly_wait(10)
     return driver
 
 
-def get_weekday_index_for_today() -> int:
-    return int(dt.datetime.now().strftime("%w"))
-
-
-def get_time_slot_index_for_today(booking_preferences: BookingPreferences) -> int:
-    today = get_weekday_index_for_today()
-    return booking_preferences.get(Weekday(today)).value["index"]
+def get_time_slot_index(booking_preferences: BookingPreferences) -> int:
+    """Get the time slot index for the day after tomorrow, because that's when we want to book for."""
+    return booking_preferences.get(Weekday.day_after_tomorrow()).value["index"]
 
 
 def should_book_today(days_to_book_this_week: list[Weekday]):
     """Need to adjust the days to book for, because of the offset of 2 (booking two days in advance). For example,
-    on Saturday (6) we want to book for Monday (1), on Sunday (0) we want to book for Tuesday (2) and so on."""
+    on Saturday (6) we want to book for Monday (1), on Sunday (7) we want to book for Tuesday (2) and so on."""
     days_to_book_adjusted_for_offset = [
         (x.value - 2) % 7 for x in days_to_book_this_week
     ]
 
-    today = get_weekday_index_for_today()
-    if today not in days_to_book_adjusted_for_offset:
+    if Weekday.today().value not in days_to_book_adjusted_for_offset:
         return False
 
     return True
@@ -415,7 +419,7 @@ def should_book_today(days_to_book_this_week: list[Weekday]):
 def process_booking(
     booking_preferences: BookingPreferences,
 ):
-    if not should_book_today(days_to_book_this_week=list(booking_preferences)):
+    if not should_book_today(list(booking_preferences)):
         return
 
     driver = initialize_driver()
@@ -431,7 +435,7 @@ def process_booking(
         new_booking_page = bookings_page.new_booking()
         giurati_fit_center_booking_page = new_booking_page.select_giurati_fit_center()
         confirm_time_slot_page = giurati_fit_center_booking_page.book_time_slot(
-            get_time_slot_index_for_today(booking_preferences)
+            get_time_slot_index(booking_preferences)
         )
 
         dashboard_page = (
