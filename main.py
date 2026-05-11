@@ -241,17 +241,24 @@ class ConfirmTimeSlotPage(Page):
 
 
 class GiuratiFitCenterBookingPage(Page):
-    # TODO: Make more robust, try booking a different slot if the last one is not available
+    # TODO: Make more robust, try booking a different slot if the prefered one is not available, etc.
     @log_call
-    def book_time_slot(self, time_slot_index: int) -> ConfirmTimeSlotPage:
+    def book_time_slot(
+        self, booking_preferences: BookingPreferences
+    ) -> ConfirmTimeSlotPage:
         self._sleep_for_a_bit()
-        # offset 2 because we want to book for two days in advance
+        time_slot_index = self.__get_time_slot_index(booking_preferences)
+        # data-date-offset 2 because we want to book for two days in advance
         time_slot = self.driver.find_element(
             By.CSS_SELECTOR,
             f'#day-schedule-container [data-date-offset="2"] div.event-slot:nth-child({time_slot_index})',
         )
         time_slot.click()
         return ConfirmTimeSlotPage(self.driver)
+
+    def __get_time_slot_index(self, booking_preferences: BookingPreferences) -> int:
+        """Get the time slot index for the day after tomorrow, because that's when we want to book for."""
+        return booking_preferences.get(Weekday.day_after_tomorrow()).value["index"]
 
 
 class NewBookingPage(Page):
@@ -382,7 +389,7 @@ def get_chrome_driver_options() -> Options:
         # So the browser doesn't close after the script finishes. Will still close if driver.quit() is called.
         options.add_experimental_option("detach", True)
     else:
-        # To run in VPS environments without a display
+        # To run in VPS environments without a GUI
         options.add_argument("--headless")
 
     return options
@@ -398,11 +405,6 @@ def initialize_driver() -> WebDriver:
     return driver
 
 
-def get_time_slot_index(booking_preferences: BookingPreferences) -> int:
-    """Get the time slot index for the day after tomorrow, because that's when we want to book for."""
-    return booking_preferences.get(Weekday.day_after_tomorrow()).value["index"]
-
-
 def should_book_today(days_to_book_this_week: list[Weekday]):
     """Need to adjust the days to book for, because of the offset of 2 (booking two days in advance). For example,
     on Saturday (6) we want to book for Monday (1), on Sunday (7) we want to book for Tuesday (2) and so on."""
@@ -410,7 +412,8 @@ def should_book_today(days_to_book_this_week: list[Weekday]):
         (x.value - 2) % 7 for x in days_to_book_this_week
     ]
 
-    if Weekday.today().value not in days_to_book_adjusted_for_offset:
+    today = Weekday.today().value
+    if today not in days_to_book_adjusted_for_offset:
         return False
 
     return True
@@ -435,7 +438,7 @@ def process_booking(
         new_booking_page = bookings_page.new_booking()
         giurati_fit_center_booking_page = new_booking_page.select_giurati_fit_center()
         confirm_time_slot_page = giurati_fit_center_booking_page.book_time_slot(
-            get_time_slot_index(booking_preferences)
+            booking_preferences
         )
 
         dashboard_page = (
