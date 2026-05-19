@@ -1,20 +1,20 @@
 import datetime as dt
-from enum import Enum
 import os
 import smtplib
 import time
 from email.message import EmailMessage
+from enum import Enum
 from random import gauss, randint
-from typing import Callable, Self, TypeVar, ParamSpec
+from typing import Callable, ParamSpec, Self, TypeVar
 
 import pyotp
 from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
-from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 
 load_dotenv()
@@ -126,7 +126,7 @@ R = TypeVar("R")
 
 def log_call(fn: Callable[P, R]) -> Callable[P, R]:
     def wrapper(*args, **kwds):
-        print(f"Started {fn.__name__}")
+        print(f"🏰 Hark! The quest '{fn.__name__}' doth commence...")
         return fn(*args, **kwds)
 
     return wrapper
@@ -158,8 +158,15 @@ class BookingOutcomeReporter:
     def report_success(self, screenshot: bytes):
         msg = EmailMessage()
         msg = self.__set_addressing_info(msg)
-        msg["Subject"] = f"Gym successfully booked for {self.__format_booking_date()}"
-        msg.set_content("I have done your bidding father")
+        msg["Subject"] = (
+            f"⚔️ Victory! To Battle on {self.__format_booking_date()} - The Gymnasium Awaits Thy Conquest!"
+        )
+        msg.set_content(
+            "By thy royal command, the deed is done, my liege! The gymnasium hath been secured for thee.\n\n"
+            "On the appointed day, steel thyself for glorious battle! Let thy muscles be tempered like fine blades, "
+            "and thy spirit burn bright as the forge. The weights shall be thy worthy adversaries, and victory shall be thine.\n\n"
+            "Go forth and conquer, noble champion! May thy gains be plentiful and thy form be mighty!"
+        )
         msg = self.__attach_screenshot(msg, screenshot)
         self.__send_email(msg)
 
@@ -167,7 +174,9 @@ class BookingOutcomeReporter:
     def report_failure(self, error: Exception, screenshot: bytes = None):
         msg = EmailMessage()
         msg = self.__set_addressing_info(msg)
-        msg["Subject"] = f"Failed to book the gym for {self.__format_booking_date()}"
+        msg["Subject"] = (
+            f"🏰 Alas! The Quest Hath Fallen Short for {self.__format_booking_date()}"
+        )
         msg.set_content(str(error))
         if screenshot is not None:
             self.__attach_screenshot(msg, screenshot)
@@ -454,8 +463,8 @@ def process_booking(
 
 
 def main():
-    print("----------Starting booking automation----------")
-    print(dt.datetime.now().isoformat())
+    print("\n⚔️  ════════════ The Great Booking Quest Commences ════════════")
+    print(f"📜 Chronological Mark: {dt.datetime.now().isoformat()}")
 
     booking_preferences: BookingPreferences = {
         Weekday.MONDAY: WeekdayAvailableTimeSlots.SLOT_10,
@@ -467,7 +476,7 @@ def main():
 
     process_booking(booking_preferences)
 
-    print("----------Ending booking automation----------\n")
+    print("⚔️  ════════════ The Quest Hath Concluded ════════════ \n")
 
 
 if __name__ == "__main__":
