@@ -47,7 +47,7 @@ polimi-gym-booking-automation/
 ├── requirements.txt        # Python package dependencies
 ├── .env.example           # Template for environment variables
 ├── .gitignore             # Git ignore configuration
-├── log.log                # Application log file (optionally generated at runtime)
+├── booking_automation.log  # Application log file (generated at runtime)
 └── README.md              # This file
 ```
 
@@ -135,14 +135,7 @@ The script will:
 
 ## Logging
 
-Log messages are printed to stdout during execution. Each major action is prefixed with "Started" to track execution flow.
-
-When running via crontab (see [Scheduling](#scheduling) section), both standard output and error messages can be automatically redirected to `log.log` using the `>> log.log 2>&1` redirection, creating a persistent log file for debugging and monitoring past executions.
-
-To manually capture logs to a file when running directly:
-```bash
-python main.py >> log.log 2>&1
-```
+Log messages are printed to stdout during execution and automatically written to `booking_automation.log`. 
 
 ## Code Architecture
 
@@ -184,7 +177,7 @@ crontab -e
 Add a line to run daily at a specific time. For example, run at 8:00 AM:
 
 ```
-0 8 * * * DISPLAY=:0 /home/username/polimi-gym-booking-automation/.venv/bin/python3 /home/username/polimi-gym-booking-automation/main.py >> log.log 2>&1
+0 8 * * * DISPLAY=:0 /home/username/polimi-gym-booking-automation/.venv/bin/python3 /home/username/polimi-gym-booking-automation/main.py
 ```
 
 **⚠️ Important**: Your computer **must be powered on** for crontab to execute the scheduled task. If you find that this is not the case or have a workaround, please [create an issue](../../issues) or [submit a PR](../../pulls).
@@ -256,7 +249,7 @@ crontab -e
 Add the scheduling line (e.g., run at 8:00 AM UTC):
 
 ```
-0 8 * * * DISPLAY=:0 /home/username/polimi-gym-booking-automation/.venv/bin/python3 /home/username/polimi-gym-booking-automation/main.py >> log.log 2>&1
+0 8 * * * DISPLAY=:0 /home/username/polimi-gym-booking-automation/.venv/bin/python3 /home/username/polimi-gym-booking-automation/main.py
 ```
 
 **Cost Estimate**: A GCP e2-micro instance with minimal Ubuntu is eligible for the free tier (up to 730 hours/month for the first 12 months).
@@ -286,7 +279,7 @@ Add the scheduling line (e.g., run at 8:00 AM UTC):
 ### Development Tips
 
 - Set `ENV=dev` to keep the browser window open for inspection
-- Use `log.log` to review execution history
+- Use `booking_automation.log` to review execution history
 
 ## Future Enhancements
 
