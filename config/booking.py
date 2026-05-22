@@ -102,4 +102,9 @@ BOOKING_PREFERENCES: BookingPreferences = {
     Day.WEDNESDAY: WeekdayAvailableTimeSlots.SLOT_9,
     Day.THURSDAY: WeekdayAvailableTimeSlots.SLOT_9,
     Day.FRIDAY: WeekdayAvailableTimeSlots.SLOT_9,
+    Day.SATURDAY: WeekendAvailableTimeSlots.SLOT_5,
 }
+
+
+# The gym allows bookings for 2 days in advance, so we need to use this offset to select the correct date for booking.
+BOOKING_DATE_OFFSET = 2

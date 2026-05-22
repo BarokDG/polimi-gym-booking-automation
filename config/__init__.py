@@ -1,20 +1,22 @@
 """Configuration package for gym booking automation."""
 
-from config.booking import (
+from .booking import (
+    BOOKING_DATE_OFFSET,
     BOOKING_PREFERENCES,
     BookingPreferences,
     Day,
 )
-from config.themes import MESSAGES, Theme, THEMES, DEFAULT_THEME
+from .themes import DEFAULT_THEME, MESSAGES, THEMES, Theme
 
 __all__ = [
     # Booking configuration
-    "Day",
-    "BookingPreferences",
+    "BOOKING_DATE_OFFSET",
     "BOOKING_PREFERENCES",
+    "BookingPreferences",
+    "Day",
     # Themes configuration
-    "Theme",
-    "THEMES",
     "DEFAULT_THEME",
     "MESSAGES",
+    "THEMES",
+    "Theme",
 ]
