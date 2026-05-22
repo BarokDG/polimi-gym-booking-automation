@@ -43,12 +43,24 @@ Upon successful booking, it sends a screenshot confirmation email. If an error o
 
 ```
 polimi-gym-booking-automation/
-├── main.py                 # Main automation script with all booking logic
-├── requirements.txt        # Python package dependencies
-├── .env.example           # Template for environment variables
-├── .gitignore             # Git ignore configuration
-├── booking_automation.log  # Application log file (generated at runtime)
-└── README.md              # This file
+├── README.md              # This file
+├── requirements.txt       # Python package dependencies
+├── src/
+│   ├── main.py            # Main automation script with booking logic
+│   ├── config/            # Configuration modules
+│   │   ├── __init__.py
+│   │   ├── booking.py     # Booking-related configuration
+│   │   └── themes.py      # Text theme configurations for messages
+│   ├── pages/             # Page object models for web automation
+│   │   ├── __init__.py
+│   │   └── pages.py       # Page object implementations
+│   └── utils/             # Utility modules
+│       ├── __init__.py
+│       ├── logger.py      # Logging functionality
+│       ├── reporter.py    # Reporting and email functionality
+│       └── decorators/    # Custom decorators
+│           ├── __init__.py
+│           └── log_call.py # Call logging decorator
 ```
 
 ## Setup
@@ -116,10 +128,10 @@ To send emails via Gmail:
 
 ## Usage
 
-Run the automation script:
+Run the automation script from the project root:
 
 ```bash
-python main.py
+python src/main.py
 ```
 
 The script will:
@@ -177,7 +189,7 @@ crontab -e
 Add a line to run daily at a specific time. For example, run at 8:00 AM:
 
 ```
-0 8 * * * DISPLAY=:0 /home/username/polimi-gym-booking-automation/.venv/bin/python3 /home/username/polimi-gym-booking-automation/main.py
+0 8 * * * DISPLAY=:0 /home/username/polimi-gym-booking-automation/.venv/bin/python3 /home/username/polimi-gym-booking-automation/src/main.py
 ```
 
 **⚠️ Important**: Your computer **must be powered on** for crontab to execute the scheduled task. If you find that this is not the case or have a workaround, please [create an issue](../../issues) or [submit a PR](../../pulls).
@@ -249,7 +261,7 @@ crontab -e
 Add the scheduling line (e.g., run at 8:00 AM UTC):
 
 ```
-0 8 * * * DISPLAY=:0 /home/username/polimi-gym-booking-automation/.venv/bin/python3 /home/username/polimi-gym-booking-automation/main.py
+0 8 * * * DISPLAY=:0 /home/username/polimi-gym-booking-automation/.venv/bin/python3 /home/username/polimi-gym-booking-automation/src/main.py
 ```
 
 **Cost Estimate**: A GCP e2-micro instance with minimal Ubuntu is eligible for the free tier (up to 730 hours/month for the first 12 months).

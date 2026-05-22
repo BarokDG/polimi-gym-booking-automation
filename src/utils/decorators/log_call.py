@@ -1,6 +1,7 @@
 from typing import Callable, ParamSpec, TypeVar
 
-from ...config.themes import MESSAGES
+from config.themes import MESSAGES
+
 from ..logger import logger
 
 P = ParamSpec("P")

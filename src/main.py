@@ -7,15 +7,15 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.chrome.webdriver import WebDriver
 from webdriver_manager.chrome import ChromeDriverManager
 
-from .config import (
+from config import (
     BOOKING_DATE_OFFSET,
     BOOKING_PREFERENCES,
     MESSAGES,
     BookingPreferences,
     Day,
 )
-from .pages import SportRickLoginPage
-from .utils import BookingOutcomeReporter, logger
+from pages import SportRickLoginPage
+from utils import BookingOutcomeReporter, logger
 
 load_dotenv()
 

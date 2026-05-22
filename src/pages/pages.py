@@ -10,8 +10,8 @@ from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
 
-from ..config import BOOKING_DATE_OFFSET, BookingPreferences, Day
-from ..utils import log_call
+from config import BOOKING_DATE_OFFSET, BookingPreferences, Day
+from utils import log_call
 
 USERNAME = os.environ["USERNAME"]
 PASSWORD = os.environ["PASSWORD"]

@@ -3,7 +3,8 @@ import os
 import smtplib
 from email.message import EmailMessage
 
-from ..config import BOOKING_DATE_OFFSET, MESSAGES
+from config import BOOKING_DATE_OFFSET, MESSAGES
+
 from .decorators import log_call
 
 DESTINATION_EMAIL_ADDRESS = os.environ["DESTINATION_EMAIL_ADDRESS"]
