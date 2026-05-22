@@ -102,7 +102,7 @@ BOOKING_PREFERENCES: BookingPreferences = {
     Day.WEDNESDAY: WeekdayAvailableTimeSlots.SLOT_9,
     Day.THURSDAY: WeekdayAvailableTimeSlots.SLOT_9,
     Day.FRIDAY: WeekdayAvailableTimeSlots.SLOT_9,
-    Day.SATURDAY: WeekendAvailableTimeSlots.SLOT_5,
+    Day.SUNDAY: WeekendAvailableTimeSlots.SLOT_5,
 }
 
 

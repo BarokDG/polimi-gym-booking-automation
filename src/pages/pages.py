@@ -13,9 +13,9 @@ from selenium.webdriver.remote.webelement import WebElement
 from ..config import BOOKING_DATE_OFFSET, BookingPreferences, Day
 from ..utils import log_call
 
-USERNAME = os.environ.get("USERNAME")
-PASSWORD = os.environ.get("PASSWORD")
-TOKEN = os.environ.get("TOKEN")
+USERNAME = os.environ["USERNAME"]
+PASSWORD = os.environ["PASSWORD"]
+TOKEN = os.environ["TOKEN"]
 
 
 class Page(ABC):
