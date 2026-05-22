@@ -296,7 +296,6 @@ Add the scheduling line (e.g., run at 8:00 AM UTC):
 ## Future Enhancements
 
 - Implement fallback logic to book alternative time slots if preferred slot is unavailable
-- Add configurable booking date offset
-- Implement retry logic for failed bookings
+- Colorize terminal output
 - Containerize application
 - Connect with a telegram bot to manage bookings and receive notifications

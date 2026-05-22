@@ -80,7 +80,7 @@ class GiuratiFitCenterBookingPage(Page):
 
     def _get_time_slot_index(self, booking_preferences: BookingPreferences) -> int:
         """Get the time slot index for the day after tomorrow, because that's when we want to book for."""
-        return booking_preferences.get(Day.day_after_tomorrow()).value["index"]
+        return booking_preferences.get(Day.day_after_tomorrow()).value.index
 
 
 class NewBookingPage(Page):

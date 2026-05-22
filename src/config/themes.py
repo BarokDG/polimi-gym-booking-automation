@@ -1,4 +1,4 @@
-"""Message themes for booking automation notifications."""
+"""Message themes for booking automation messages and notifications."""
 
 from enum import Enum
 
@@ -15,7 +15,7 @@ class Theme(Enum):
     WARHAMMER40K = "warhammer40k"
 
 
-@dataclass
+@dataclass(frozen=True)
 class Message:
     action_begin: str
     action_end: str
@@ -28,7 +28,7 @@ class Message:
     skip_today: str
 
 
-THEMES = {
+THEMES: dict[Theme, Message] = {
     Theme.BASIC: Message(
         action_start="Starting function: {function_name}",
         action_begin="Starting booking automation...",
@@ -78,7 +78,7 @@ THEMES = {
         email_failure_subject="💀 Winter Has Come - Booking Failed for {date}",
         error="💀 Valar Dohaeris! An error has struck us down: {error}",
         should_book_today="🐉 The ravens have spoken! The omens favor your training today. Seize your destiny and claim victory at the gymnasium!",
-        skip_today="👑 Not today, warrior. The Lannisters await on a more fortuitous day. Your next battle shall commence on {date}.",
+        skip_today="👑 Not today, warrior. The Lannisters await on a more fortuitous day.",
     ),
     Theme.MEDIEVAL: Message(
         action_start="🏰 Hark! The quest '{function_name}' doth commence...",
@@ -112,7 +112,7 @@ THEMES = {
         email_failure_subject="⚠️ MISSION CONTROL ALERT - Training Launch Failed for {date}",
         error="⚠️  Houston, we have a problem! Error detected: {error}",
         should_book_today="🌌 All systems go! Mission Control confirms that today is optimal for orbital gym training. Stand by for launch!",
-        skip_today="📡 Stand down, astronaut. Gravitational forces misaligned for training today. Commence operations on {date}. Mission abort confirmed.",
+        skip_today="📡 Stand down, astronaut. Gravitational forces misaligned for training today. Mission abort confirmed.",
     ),
     Theme.STAR_WARS: Message(
         action_start="🌟 May the Force be with you... Initiating '{function_name}' sequence.",
@@ -129,7 +129,7 @@ THEMES = {
         email_success_subject="⚡ Jedi Training Confirmed for {date} - The Force is Strong!",
         error="🛸 A disturbance in the Force! Error detected: {error}",
         should_book_today="🌌 The Force indicates that today is aligned with your destiny. Proceed to the gymnasium, young Padawan!",
-        skip_today="🌌 The Dark Side grows strong. Today is not your battle day. Patience, Jedi. Return on {date} when the Force guides you.",
+        skip_today="🌌 The Dark Side grows strong. Today is not your battle day. Patience, Jedi.",
     ),
     Theme.WARHAMMER40K: Message(
         action_begin="🔴 ▓▓▓▓▓▓▓▓▓▓▓▓ IMPERIAL BOOKING PROTOCOL ACTIVATED ▓▓▓▓▓▓▓▓▓▓▓▓",
@@ -146,9 +146,9 @@ THEMES = {
         email_success_subject="⚡ MISSION REPORT {date} - GYMNASIUM FORTIFICATION SUCCESSFUL!",
         error="💀 CRITICAL FAILURE: The machine spirits are displeased! {error}",
         should_book_today="📡 SCANNING FOR HOSTILE ACTIVITY... The machine spirits indicate that today is a viable day for gymnasium assault. Engaging booking protocol!",
-        skip_today="📡 ALERT: Hostile activity detected on this rotation. Delaying gymnaasium assault to {date}. PATIENCE, SOLDIER! The Emperor protects those who wait.",
+        skip_today="📡 ALERT: Hostile activity detected on this rotation. Delaying gymnasium assault. PATIENCE, SOLDIER! The Emperor protects those who wait.",
     ),
 }
 
-DEFAULT_THEME = Theme.WARHAMMER40K
+DEFAULT_THEME = Theme.BASIC
 MESSAGES = THEMES[DEFAULT_THEME]

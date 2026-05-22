@@ -41,7 +41,9 @@ class BookingOutcomeReporter:
         msg["Subject"] = MESSAGES.email_success_subject.format(
             date=self._format_booking_date()
         )
-        msg.set_content(MESSAGES.email_success_body)
+        msg.set_content(
+            MESSAGES.email_success_body.format(date=self._format_booking_date())
+        )
         msg = self._attach_screenshot(msg, screenshot)
         self._send_email(msg)
 

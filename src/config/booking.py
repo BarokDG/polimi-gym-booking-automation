@@ -3,6 +3,14 @@
 import datetime as dt
 from enum import Enum
 
+from attr import dataclass
+
+
+@dataclass(frozen=True)
+class TimeSlot:
+    label: str
+    index: int
+
 
 class Day(Enum):
     MONDAY = 0
@@ -23,73 +31,73 @@ class Day(Enum):
 
 
 class WeekdayAvailableTimeSlots(Enum):
-    SLOT_1 = {
-        "label": "7:00-8:30",
-        "index": 1,
-    }
-    SLOT_2 = {
-        "label": "8:30-10:00",
-        "index": 2,
-    }
-    SLOT_3 = {
-        "label": "10:00-11:30",
-        "index": 3,
-    }
-    SLOT_4 = {
-        "label": "11:30-13:00",
-        "index": 4,
-    }
-    SLOT_5 = {
-        "label": "13:00-14:30",
-        "index": 5,
-    }
-    SLOT_6 = {
-        "label": "14:30-16:00",
-        "index": 6,
-    }
-    SLOT_7 = {
-        "label": "16:00-17:30",
-        "index": 7,
-    }
-    SLOT_8 = {
-        "label": "17:30-19:00",
-        "index": 8,
-    }
-    SLOT_9 = {
-        "label": "19:00-20:30",
-        "index": 9,
-    }
-    SLOT_10 = {
-        "label": "20:30-22:00",
-        "index": 10,
-    }
+    SLOT_1 = TimeSlot(
+        label="7:00-8:30",
+        index=1,
+    )
+    SLOT_2 = TimeSlot(
+        label="8:30-10:00",
+        index=2,
+    )
+    SLOT_3 = TimeSlot(
+        label="10:00-11:30",
+        index=3,
+    )
+    SLOT_4 = TimeSlot(
+        label="11:30-13:00",
+        index=4,
+    )
+    SLOT_5 = TimeSlot(
+        label="13:00-14:30",
+        index=5,
+    )
+    SLOT_6 = TimeSlot(
+        label="14:30-16:00",
+        index=6,
+    )
+    SLOT_7 = TimeSlot(
+        label="16:00-17:30",
+        index=7,
+    )
+    SLOT_8 = TimeSlot(
+        label="17:30-19:00",
+        index=8,
+    )
+    SLOT_9 = TimeSlot(
+        label="19:00-20:30",
+        index=9,
+    )
+    SLOT_10 = TimeSlot(
+        label="20:30-22:00",
+        index=10,
+    )
 
 
 class WeekendAvailableTimeSlots(Enum):
-    SLOT_1 = {
-        "label": "9:00-10:30",
-        "index": 1,
-    }
-    SLOT_2 = {
-        "label": "10:30-12:00",
-        "index": 2,
-    }
-    SLOT_3 = {
-        "label": "12:00-13:30",
-        "index": 3,
-    }
-    SLOT_4 = {
-        "label": "13:30-15:00",
-        "index": 4,
-    }
-    SLOT_5 = {
-        "label": "15:00-16:30",
-        "index": 5,
-    }
-    SLOT_6 = {
-        "label": "16:30-18:00",
-        "index": 6,
-    }
+    SLOT_1 = TimeSlot(
+        label="9:00-10:30",
+        index=1,
+    )
+    SLOT_2 = TimeSlot(
+        label="10:30-12:00",
+        index=2,
+    )
+    SLOT_3 = TimeSlot(
+        label="12:00-13:30",
+        index=3,
+    )
+    SLOT_4 = TimeSlot(
+        label="13:30-15:00",
+        index=4,
+    )
+    SLOT_5 = TimeSlot(
+        label="15:00-16:30",
+        index=5,
+    )
+    SLOT_6 = TimeSlot(
+        label="16:30-18:00",
+        index=6,
+    )
 
 
 BookingPreferences = dict[Day, WeekdayAvailableTimeSlots | WeekendAvailableTimeSlots]
@@ -102,7 +110,6 @@ BOOKING_PREFERENCES: BookingPreferences = {
     Day.WEDNESDAY: WeekdayAvailableTimeSlots.SLOT_9,
     Day.THURSDAY: WeekdayAvailableTimeSlots.SLOT_9,
     Day.FRIDAY: WeekdayAvailableTimeSlots.SLOT_9,
-    Day.SUNDAY: WeekendAvailableTimeSlots.SLOT_5,
 }
 
 
