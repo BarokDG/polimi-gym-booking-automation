@@ -29,12 +29,13 @@ class Bot:
     def start(self, booking_preferences: BookingPreferences):
         self._logger.info(MESSAGES.action_begin)
 
+        self._booking_outcome_reporter = BookingOutcomeReporter()
+
         try:
             if self._should_book_today(list(booking_preferences)):
                 self._logger.info(MESSAGES.should_book_today)
 
                 self._driver = self._initialize_driver()
-                self._booking_outcome_reporter = BookingOutcomeReporter()
 
                 self._book(booking_preferences)
             else:

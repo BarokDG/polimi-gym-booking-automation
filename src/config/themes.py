@@ -7,8 +7,6 @@ from attr import dataclass
 
 class Theme(Enum):
     BASIC = "basic"
-    CLASSICAL = "classical"
-    GAME_OF_THRONES = "game_of_thrones"
     MEDIEVAL = "medieval"
     NASA = "nasa"
     STAR_WARS = "star_wars"
@@ -44,42 +42,6 @@ THEMES: dict[Theme, Message] = {
         should_book_today="Today is a scheduled booking day.",
         skip_today="Today is not a scheduled booking day. Will try again tomorrow.",
     ),
-    Theme.CLASSICAL: Message(
-        action_start="🏛️ Ave! The discourse on '{function_name}' commences in the agora.",
-        action_begin="⚱️  ════════════ The Olympic Trials Have Begun ════════════",
-        action_end="⚱️  ════════════ The Contest Hath Concluded ════════════ \n",
-        email_success_body=(
-            "Greetings, noble citizen of Athens!\n\n"
-            "The Muses have blessed you! Your gymnasium session has been secured for {date}.\n\n"
-            "On that glorious day, channel the spirit of the ancient Olympians! Let your muscles grow strong like marble columns, "
-            "and your determination burn bright as the sacred flame. Train as Plato philosophized: with vigor and excellence. "
-            "Let each rep be a symphony, each set a sonnet to the gods!\n\n"
-            "Arete—strive for excellence! The gods watch and approve!"
-        ),
-        email_success_subject="🏆 Your Olympic Destiny Awaits on {date} - Carpe Diem!",
-        email_failure_subject="⚱️ The Fates Were Not Kind - Booking Failed for {date}",
-        error="🔥 Alas! The fates have conspired against us: {error}",
-        should_book_today="🏛️ The Oracle's prophecy speaks true! Today the gymnasium calls to you, as Heracles heard the call to glory!",
-        skip_today="📜 The stars decree that this day is not for your trials. Return on {date}, when Nike smiles upon your endeavors.",
-    ),
-    Theme.GAME_OF_THRONES: Message(
-        action_start="🐉 Winter is Coming... The quest '{function_name}' begins.",
-        action_begin="⚔️  ════════════ The Iron Throne of Fitness Awaits ════════════",
-        action_end="⚔️  ════════════ Another Day in the Great Fitness War ════════════ \n",
-        email_success_body=(
-            "Hear me, noble warrior of the Seven Kingdoms!\n\n"
-            "The Red Priestess smiles upon you! Your gym session has been claimed for {date}.\n\n"
-            "On the day written in the stars, ascend the Iron Throne of Fitness and prove your worth! "
-            "Let your muscles burn like dragonfire, and your resolve be as unbreakable as the Wall itself. "
-            "The Lannisters may spend their gold, but YOU shall spend your sweat and emerge victorious!\n\n"
-            "Winter is coming, but your gains are eternal. WINTER IS HERE!"
-        ),
-        email_success_subject="⚔️ You Shall Claim the Iron Throne of Fitness on {date}!",
-        email_failure_subject="💀 Winter Has Come - Booking Failed for {date}",
-        error="💀 Valar Dohaeris! An error has struck us down: {error}",
-        should_book_today="🐉 The ravens have spoken! The omens favor your training today. Seize your destiny and claim victory at the gymnasium!",
-        skip_today="👑 Not today, warrior. The Lannisters await on a more fortuitous day.",
-    ),
     Theme.MEDIEVAL: Message(
         action_start="🏰 Hark! The quest '{function_name}' doth commence...",
         action_begin="⚔️  ════════════ The Great Booking Quest Commences ════════════",
@@ -98,7 +60,7 @@ THEMES: dict[Theme, Message] = {
     ),
     Theme.NASA: Message(
         action_start="🚀 Mission Control: Initiating '{function_name}' launch sequence.",
-        action_begin="🛰️  ════════════ T-MINUS 10... 9... 8... GYMNASIUM PROTOCOL ACTIVATED ════════════",
+        action_begin="🛰️  ════════════ T-MINUS 3... 2... 1... GYMNASIUM PROTOCOL ACTIVATED ════════════",
         action_end="🛰️  ════════════ MISSION TELEMETRY: ALL SYSTEMS NOMINAL ════════════ \n",
         email_success_body=(
             "Greetings, Astronaut!\n\n"
