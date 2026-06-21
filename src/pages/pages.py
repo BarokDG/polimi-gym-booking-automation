@@ -46,6 +46,7 @@ class Page(ABC):
 class ConfirmTimeSlotPage(Page):
     @log_call
     def confirm(self) -> Self:
+        self._sleep_for_a_bit()
         confirm_booking_button = self._driver.find_element(
             By.ID, "btnConfirmAppointmentBooking"
         )
