@@ -46,6 +46,7 @@ class Page(ABC):
 class ConfirmTimeSlotPage(Page):
     @log_call
     def confirm(self) -> Self:
+        self._sleep_for_a_bit()
         confirm_booking_button = self._driver.find_element(
             By.ID, "btnConfirmAppointmentBooking"
         )
@@ -139,8 +140,19 @@ class DashboardPage(Page):
 class VerifyOTPPage(Page):
     @log_call
     def verify(self) -> DashboardPage:
-        self._input_otp()
-        self._click_verify_otp()
+        try:
+            retry = 0
+            while retry < 3:
+                self._input_otp()
+                self._click_verify_otp()
+
+                # check whether verification was successful and break here
+                # break
+
+                retry += 1
+        except:
+            ...  # throw verification failed error
+
         return DashboardPage(self._driver)
 
     def _input_otp(self):
