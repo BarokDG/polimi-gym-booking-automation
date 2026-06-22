@@ -1,9 +1,10 @@
 """Booking preferences and time slot configuration."""
 
-import datetime as dt
 from enum import Enum
 
 from attr import dataclass
+
+from .clock import now
 
 
 @dataclass(frozen=True)
@@ -23,11 +24,11 @@ class Day(Enum):
 
     @classmethod
     def today(cls) -> "Day":
-        return cls(dt.datetime.today().weekday())
+        return cls(now().weekday())
 
     @classmethod
     def day_after_tomorrow(cls) -> "Day":
-        return cls((dt.datetime.today().weekday() + 2) % 7)
+        return cls((now().weekday() + 2) % 7)
 
 
 class WeekdayAvailableTimeSlots(Enum):

@@ -6,6 +6,7 @@ from .booking import (
     BookingPreferences,
     Day,
 )
+from .clock import APP_TZ, now
 from .themes import DEFAULT_THEME, MESSAGES, THEMES, Theme
 
 __all__ = [
@@ -19,4 +20,7 @@ __all__ = [
     "MESSAGES",
     "THEMES",
     "Theme",
+    # Clock configuration
+    "APP_TZ",
+    "now",
 ]
