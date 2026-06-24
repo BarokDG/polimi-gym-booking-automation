@@ -20,6 +20,7 @@ An automated tool that books gym time slots at Polimi's Giurati Fit Center by si
 - [Hosting & Scheduling](#hosting--scheduling)
   - [Local Machine](#local-machine)
   - [Cloud Hosting](#cloud-hosting)
+    - [Timezone Configuration](#timezone-configuration)
     - [Google Cloud Platform (GCP)](#google-cloud-platform-gcp---compute-engine)
     - [Amazon Web Services (AWS)](#amazon-web-services-aws---ec2)
     - [Microsoft Azure](#microsoft-azure---virtual-machines)
@@ -201,6 +202,45 @@ Create a task that runs the script at your desired interval using Windows Task S
 ### Cloud Hosting
 
 Cloud hosting ensures the script runs reliably without requiring your personal machine to be on.
+
+#### Timezone Configuration
+
+To ensure that cron jobs run at the correct local time, set the timezone on your cloud instance to 'Europe/Rome'. The default timezone is usually UTC.
+
+**For all cloud providers, set the timezone using one of these methods:**
+
+**Method 1: Using timedatectl (Recommended for Ubuntu/Debian)**
+
+```bash
+sudo timedatectl set-timezone Europe/Rome
+```
+
+Verify the timezone was set correctly:
+
+```bash
+timedatectl
+```
+
+**Method 2: Using /etc/timezone**
+
+```bash
+echo "Europe/Rome" | sudo tee /etc/timezone
+sudo dpkg-reconfigure -f noninteractive tzdata
+```
+
+**Verify your cron jobs respect the timezone** by checking that they run at the expected time. You can test this by setting a cron job to run every minute and checking the logs:
+
+```bash
+* * * * * date >> /tmp/cron_test.log
+```
+
+Then check the log:
+
+```bash
+cat /tmp/cron_test.log
+```
+
+The timestamps should show Europe/Rome time (UTC+1 or UTC+2 depending on daylight saving time).
 
 #### Google Cloud Platform (GCP) - Compute Engine
 
