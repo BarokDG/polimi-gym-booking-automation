@@ -46,10 +46,10 @@ class Page(ABC):
 class ConfirmTimeSlotPage(Page):
     @log_call
     def confirm(self) -> Self:
-        self._sleep_for_a_bit()
         confirm_booking_button = self._driver.find_element(
             By.ID, "btnConfirmAppointmentBooking"
         )
+        self._sleep_for_a_bit()
         confirm_booking_button.click()
         return self
 
@@ -77,6 +77,7 @@ class GiuratiFitCenterBookingPage(Page):
             f'#day-schedule-container [data-date-offset="{BOOKING_DATE_OFFSET}"] div.event-slot:nth-child({time_slot_index})',
         )
         time_slot.click()
+        self._sleep_for_a_bit()
         return ConfirmTimeSlotPage(self._driver)
 
     def _get_time_slot_index(self, booking_preferences: BookingPreferences) -> int:
@@ -88,7 +89,7 @@ class NewBookingPage(Page):
     @log_call
     def select_giurati_fit_center(self) -> GiuratiFitCenterBookingPage:
         fit_center_booking_button = self._driver.find_element(
-            By.CSS_SELECTOR, ".list-group-item:last-child"
+            By.CSS_SELECTOR, ".list-group-item:first-child"
         )
         fit_center_booking_button.click()
         return GiuratiFitCenterBookingPage(self._driver)
