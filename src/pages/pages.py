@@ -23,7 +23,7 @@ class Page(ABC):
         self._driver = driver
         self._sleep_for_a_bit()
 
-    def take_screenshot(self):
+    def get_screenshot(self):
         return self._driver.get_screenshot_as_png()
 
     def _sleep_for_a_bit(self, duration: int | None = None):
@@ -124,9 +124,9 @@ class DashboardPage(Page):
         return BookingsPage(self._driver)
 
     @log_call
-    def take_screenshot(self):
+    def get_screenshot(self):
         self._is_loaded()
-        return super().take_screenshot()
+        return super().get_screenshot()
 
     def _is_loaded(self):
         try:
