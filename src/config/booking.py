@@ -5,6 +5,9 @@ from enum import Enum
 
 from attr import dataclass
 
+# The gym allows bookings for 2 days in advance, so we need to use this offset to select the correct date for booking.
+BOOKING_DATE_OFFSET = 2
+
 
 @dataclass(frozen=True)
 class TimeSlot:
@@ -26,8 +29,8 @@ class Day(Enum):
         return cls(dt.datetime.today().weekday())
 
     @classmethod
-    def day_after_tomorrow(cls) -> "Day":
-        return cls((dt.datetime.today().weekday() + 2) % 7)
+    def day_to_book(cls) -> "Day":
+        return cls((dt.datetime.today().weekday() + BOOKING_DATE_OFFSET) % 7)
 
 
 class WeekdayAvailableTimeSlots(Enum):
@@ -111,7 +114,3 @@ BOOKING_PREFERENCES: BookingPreferences = {
     Day.THURSDAY: WeekdayAvailableTimeSlots.SLOT_9,
     Day.FRIDAY: WeekdayAvailableTimeSlots.SLOT_9,
 }
-
-
-# The gym allows bookings for 2 days in advance, so we need to use this offset to select the correct date for booking.
-BOOKING_DATE_OFFSET = 2

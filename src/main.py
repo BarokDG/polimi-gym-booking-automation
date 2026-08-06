@@ -49,7 +49,7 @@ class Bot:
     def _stop(self):
         self._logger.info(MESSAGES.action_end)
 
-        if not IS_DEV_ENV:
+        if not IS_DEV_ENV and hasattr(self, "_driver"):
             self._driver.quit()
 
     def _book(self, booking_preferences: BookingPreferences):
@@ -78,10 +78,7 @@ class Bot:
         ]
 
         today = Day.today().value
-        if today not in days_to_book_adjusted_for_offset:
-            return False
-
-        return True
+        return today in days_to_book_adjusted_for_offset
 
     def _initialize_driver(self) -> WebDriver:
         driver: WebDriver = webdriver.Chrome(
@@ -89,13 +86,13 @@ class Bot:
             if IS_DEV_ENV
             else ChromeService(ChromeDriverManager().install()),
             options=self._get_chrome_driver_options(),
-        )
+        )  # type: ignore
         driver.set_window_size(1280, 720)
         driver.implicitly_wait(10)
         return driver
 
     def _get_chrome_driver_options(self) -> Options:
-        options: Options = webdriver.ChromeOptions()
+        options: Options = webdriver.ChromeOptions()  # type: ignore
 
         if IS_DEV_ENV:
             # So the browser doesn't close after the script finishes. Will still close if driver.quit() is called.
