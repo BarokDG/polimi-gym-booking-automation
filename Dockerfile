@@ -1,18 +1,32 @@
-FROM --platform=linux/amd64 python:3.14-bookworm
+FROM python:3.13-slim-bookworm
+
+ENV TZ=Europe/Rome \
+    PYTHONUNBUFFERED=1 \
+    LOG_FILE=/app/logs/booking_automation.log \
+    CHROMEDRIVER_PATH=/usr/bin/chromedriver
 
 RUN apt-get update && \
-    apt-get install -y wget && \
-    wget -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
-    apt-get install -y /tmp/chrome.deb && \
-    rm /tmp/chrome.deb && \
-    rm -rf /var/lib/apt/lists/*
-    
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        chromium \
+        chromium-driver \
+        tzdata && \
+    rm -rf /var/lib/apt/lists/* && \
+    chromium --version && \
+    "$CHROMEDRIVER_PATH" --version
+
 WORKDIR /app
 
 COPY requirements.txt ./
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
-COPY . .
+COPY src ./src
+
+RUN useradd --create-home bot && \
+    mkdir -p /app/logs && \
+    chown -R bot:bot /app
+
+USER bot
 
 CMD ["python", "src/main.py"]

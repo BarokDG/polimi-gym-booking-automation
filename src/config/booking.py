@@ -114,4 +114,4 @@ BOOKING_PREFERENCES: BookingPreferences = {
 
 
 # The gym allows bookings for 2 days in advance, so we need to use this offset to select the correct date for booking.
-BOOKING_DATE_OFFSET = 2
+BOOKING_DATE_OFFSET = 1

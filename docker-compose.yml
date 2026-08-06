@@ -1,0 +1,12 @@
+services:
+  booking-bot:
+    build: .
+    image: polimi-gym-booking-automation
+    env_file: .env
+    environment:
+      # The bot books 2 days ahead based on the local weekday, so keep this
+      # matched to the gym's timezone regardless of where the host runs.
+      TZ: Europe/Rome
+    volumes:
+      - ./logs:/app/logs
+    restart: "no"

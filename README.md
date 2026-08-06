@@ -17,6 +17,7 @@ An automated tool that books gym time slots at Polimi's Giurati Fit Center by si
 - [Logging](#logging)
 - [Code Architecture](#code-architecture)
 - [Dependencies](#dependencies)
+- [Docker](#docker)
 - [Hosting & Scheduling](#hosting--scheduling)
   - [Local Machine](#local-machine)
   - [Cloud Hosting](#cloud-hosting)
@@ -99,7 +100,7 @@ pip install -r requirements.txt
 Create a `.env` file in the project root (use `.env.example` as a template):
 
 ```
-USER_NAME=your_polimi_username
+USERNAME=your_polimi_username
 PASSWORD=your_polimi_password
 TOKEN=your_totp_secret_key
 DESTINATION_EMAIL_ADDRESS=recipient@example.com
@@ -110,7 +111,7 @@ ENV=prod  # 'dev' or 'prod'
 
 #### Variable Details
 
-- **USER_NAME**: Your Polimi account username
+- **USERNAME**: Your Polimi account username
 - **PASSWORD**: Your Polimi account password
 - **TOKEN**: The secret key for TOTP (Time-based One-Time Password) - obtain from your Polimi 2FA settings
 - **DESTINATION_EMAIL_ADDRESS**: Email address where booking confirmations/errors will be sent
@@ -152,7 +153,58 @@ Log messages are printed to stdout during execution and automatically written to
 
 ## Code Architecture
 
-The project is organized using page object patterns:
+A scheduler on the host starts a one-shot container. The bot decides whether today is a booking day before it ever launches a browser, so most runs cost nothing but a log line.
+
+```mermaid
+flowchart TB
+    cron["Host cron<br/>docker compose run --rm booking-bot"]
+    envfile[".env<br/>credentials, TOTP secret"]
+
+    subgraph container["Docker container - TZ Europe/Rome, non-root"]
+        bot["Bot.start<br/>src/main.py"]
+        cfg["config<br/>BOOKING_PREFERENCES, Day, BOOKING_DATE_OFFSET"]
+        gate{"Is today a<br/>booking day?"}
+        skip["Log and exit"]
+        pages["pages<br/>page objects"]
+        chrome["Chromium headless<br/>driven via chromium-driver"]
+        rep["BookingOutcomeReporter"]
+        log["logger"]
+    end
+
+    portal["SportRick and Polimi portal"]
+    smtp["Gmail SMTP"]
+    inbox["Your inbox<br/>outcome plus screenshot"]
+    volume["./logs volume"]
+
+    cron --> bot
+    envfile -.->|injected at runtime| bot
+    cfg --> gate
+    bot --> gate
+    gate -->|no| skip
+    gate -->|yes| pages
+    pages --> chrome
+    chrome <-->|HTTPS| portal
+    pages --> rep
+    rep --> smtp
+    smtp --> inbox
+    bot --> log
+    log --> volume
+    log --> stdout["stdout, via docker logs"]
+```
+
+The browser work is organized with page objects, each returning the next page in the flow so `_book` reads as the booking journey itself:
+
+```mermaid
+flowchart LR
+    A["SportRickLoginPage"] -->|"accept_cookies, login"| B["PolimiLoginPage"]
+    B -->|"login"| C["VerifyOTPPage"]
+    C -->|"verify, TOTP via pyotp"| D["DashboardPage"]
+    D -->|"accept_cookies, go_to_bookings"| E["BookingsPage"]
+    E -->|"new_booking"| F["NewBookingPage"]
+    F -->|"select_giurati_fit_center"| G["GiuratiFitCenterBookingPage"]
+    G -->|"book_time_slot"| H["ConfirmTimeSlotPage"]
+    H -->|"confirm, decline another slot"| I["DashboardPage<br/>screenshot emailed"]
+```
 
 - **Page**: Base class for all page interactions with common utilities
 - **SportRickLoginPage**: Handles SportRick platform login and cookie acceptance
@@ -174,6 +226,50 @@ See [requirements.txt](requirements.txt) for the complete list. Key dependencies
 - **webdriver-manager**: Automatically manages ChromeDriver versions
 - **python-dotenv**: Loads environment variables from .env
 - **pyotp**: Generates TOTP codes for 2FA
+
+## Docker
+
+Running in Docker means you don't have to install a browser, Python, or match ChromeDriver versions on the host. The image ships Debian's Chromium with its version-matched `chromium-driver`, so no driver is fetched at runtime, and is fixed to `Europe/Rome` so the booking date is always computed against gym-local time.
+
+### Build
+
+```bash
+docker compose build
+```
+
+The build works natively on both `linux/amd64` and `linux/arm64` — Chromium is packaged for both, so an Apple Silicon machine and an amd64 cloud VM each build and run without emulation. To produce an image for the other architecture, or a multi-arch image for a registry:
+
+```bash
+docker buildx build --platform linux/amd64,linux/arm64 -t <registry>/polimi-gym-booking-automation --push .
+```
+
+Dependencies install ahead of the source copy, so editing `src` never reinstalls them and neither one touches the Chromium layer.
+
+### Run
+
+Create a `.env` first (see [Environment Variables](#environment-variables)). It is deliberately excluded from the image via `.dockerignore` and injected at runtime instead, so no secret is ever baked into a layer. Set `ENV=prod` — `dev` mode keeps a visible browser open, which cannot work headlessly.
+
+```bash
+docker compose run --rm booking-bot
+```
+
+The container performs a single booking run and exits, so schedule it externally rather than leaving it running. Logs go to stdout (`docker logs`) and to `./logs/booking_automation.log` on the host.
+
+To run it without Compose:
+
+```bash
+docker run --rm --env-file .env -e TZ=Europe/Rome -v "$PWD/logs:/app/logs" polimi-gym-booking-automation
+```
+
+### Scheduling the container
+
+Have host cron start the container, keeping the container itself a one-shot job. To run daily at 08:00:
+
+```
+0 8 * * * cd /home/username/polimi-gym-booking-automation && /usr/bin/docker compose run --rm booking-bot >> /var/log/gym-booking-cron.log 2>&1
+```
+
+The host's own timezone still decides *when* cron fires, so set it as described in [Timezone Configuration](#timezone-configuration). `TZ` inside the container only controls which date the bot books for.
 
 ## Hosting & Scheduling
 

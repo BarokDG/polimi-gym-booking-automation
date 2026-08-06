@@ -20,11 +20,15 @@ from utils import BookingOutcomeReporter, logger
 load_dotenv()
 
 IS_DEV_ENV = os.environ["ENV"] == "dev"
+# Set by the Docker image to the driver installed at build time. Unset elsewhere,
+# where webdriver_manager is used as before.
+CHROMEDRIVER_PATH = os.environ.get("CHROMEDRIVER_PATH")
 
 
 class Bot:
     def __init__(self):
         self._logger = logger
+        self._driver: WebDriver | None = None
 
     def start(self, booking_preferences: BookingPreferences):
         self._logger.info(MESSAGES.action_begin)
@@ -37,11 +41,12 @@ class Bot:
                 self._book(booking_preferences)
             else:
                 self._logger.info(MESSAGES.skip_today)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self._logger.info(MESSAGES.error.format(error=e))
 
             self._booking_outcome_reporter.report_failure(
-                e, self._driver.get_screenshot_as_png()
+                e,
+                self._driver.get_screenshot_as_png() if self._driver else None,
             )
         finally:
             self._stop()
@@ -49,7 +54,7 @@ class Bot:
     def _stop(self):
         self._logger.info(MESSAGES.action_end)
 
-        if not IS_DEV_ENV:
+        if not IS_DEV_ENV and self._driver:
             self._driver.quit()
 
     def _book(self, booking_preferences: BookingPreferences):
@@ -78,21 +83,25 @@ class Bot:
         ]
 
         today = Day.today().value
-        if today not in days_to_book_adjusted_for_offset:
-            return False
-
-        return True
+        return today in days_to_book_adjusted_for_offset
 
     def _initialize_driver(self) -> WebDriver:
         driver: WebDriver = webdriver.Chrome(
-            service=None
-            if IS_DEV_ENV
-            else ChromeService(ChromeDriverManager().install()),
+            service=self._get_chrome_driver_service(),
             options=self._get_chrome_driver_options(),
         )
         driver.set_window_size(1280, 720)
         driver.implicitly_wait(10)
         return driver
+
+    def _get_chrome_driver_service(self) -> ChromeService | None:
+        if IS_DEV_ENV:
+            return None
+
+        if CHROMEDRIVER_PATH:
+            return ChromeService(executable_path=CHROMEDRIVER_PATH)
+
+        return ChromeService(ChromeDriverManager().install())
 
     def _get_chrome_driver_options(self) -> Options:
         options: Options = webdriver.ChromeOptions()
@@ -102,7 +111,12 @@ class Bot:
             options.add_experimental_option("detach", True)
         else:
             # To run in VPS environments without a GUI
-            options.add_argument("--headless")
+            options.add_argument("--headless=new")
+            # Chrome's own sandbox can't start inside a container, and the default
+            # 64MB /dev/shm makes it crash on page loads.
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-gpu")
 
         return options
 
