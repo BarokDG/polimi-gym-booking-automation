@@ -1,14 +1,16 @@
-name: Book Workflow
+name: Gym Booking
 
 on:
+  workflow_dispatch:
+
   schedule:
     - cron: '*/6 * * * *'
       timezone: Europe/Rome
-  workflow_dispatch:
-      
+
 jobs:
   test:
     runs-on: ubuntu-latest
+
     steps:
       - name: Test schedule workflow
-        run: echo "This is a test workflow that runs every 2 minutes."
+        run: echo "Schedule works!"
