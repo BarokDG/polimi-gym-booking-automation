@@ -1,0 +1,11 @@
+on:
+  schedule:
+    - cron: '*/2 * * * *' # Run every 2 minutes
+      timezone: Europe/Rome
+      
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test schedule workflow
+        run: echo "This is a test workflow that runs every 2 minutes."
