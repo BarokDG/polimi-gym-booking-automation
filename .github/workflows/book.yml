@@ -1,6 +1,6 @@
 on:
   schedule:
-    - cron: '*/2 * * * *' # Run every 2 minutes
+    - cron: '*/6 * * * *'
       timezone: Europe/Rome
       
 jobs:
