@@ -1,0 +1,19 @@
+name: pgba
+services:
+  selenium:
+    image: selenium/standalone-chrome:latest
+    ports:
+      - "4444:4444"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4444/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3  
+
+  bot:
+    build: .
+    env_file:
+      - .env
+    depends_on:
+      selenium:
+        condition: service_healthy

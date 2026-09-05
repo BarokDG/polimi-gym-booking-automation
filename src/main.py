@@ -1,11 +1,12 @@
 import os
 
 from dotenv import load_dotenv
+
+load_dotenv()
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.chrome.webdriver import WebDriver
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.remote.webdriver import WebDriver
 
 from config import (
     BOOKING_DATE_OFFSET,
@@ -17,14 +18,13 @@ from config import (
 from pages import SportRickLoginPage
 from utils import BookingOutcomeReporter, logger
 
-load_dotenv()
-
 IS_DEV_ENV = os.environ["ENV"] == "dev"
 
 
 class Bot:
     def __init__(self):
         self._logger = logger
+        self._driver: WebDriver
 
     def start(self, booking_preferences: BookingPreferences):
         self._logger.info(MESSAGES.action_begin)
@@ -37,11 +37,12 @@ class Bot:
                 self._book(booking_preferences)
             else:
                 self._logger.info(MESSAGES.skip_today)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self._logger.info(MESSAGES.error.format(error=e))
 
             self._booking_outcome_reporter.report_failure(
-                e, self._driver.get_screenshot_as_png()
+                e,
+                self._driver.get_screenshot_as_png() if self._driver else None,
             )
         finally:
             self._stop()
@@ -49,7 +50,7 @@ class Bot:
     def _stop(self):
         self._logger.info(MESSAGES.action_end)
 
-        if not IS_DEV_ENV and hasattr(self, "_driver"):
+        if self._driver and not IS_DEV_ENV:
             self._driver.quit()
 
     def _book(self, booking_preferences: BookingPreferences):
@@ -81,12 +82,18 @@ class Bot:
         return today in days_to_book_adjusted_for_offset
 
     def _initialize_driver(self) -> WebDriver:
-        driver: WebDriver = webdriver.Chrome(
-            service=None
-            if IS_DEV_ENV
-            else ChromeService(ChromeDriverManager().install()),
-            options=self._get_chrome_driver_options(),
-        )  # type: ignore
+        driver: WebDriver
+
+        if IS_DEV_ENV:
+            driver = webdriver.Chrome(
+                options=self._get_chrome_driver_options(),
+            )  # type: ignore
+        else:
+            driver = webdriver.Remote(
+                command_executor="http://selenium:4444",
+                options=self._get_chrome_driver_options(),
+            )  # type: ignore
+
         driver.set_window_size(1280, 720)
         driver.implicitly_wait(10)
         return driver
@@ -99,7 +106,11 @@ class Bot:
             options.add_experimental_option("detach", True)
         else:
             # To run in VPS environments without a GUI
-            options.add_argument("--headless")
+            options.add_argument("--headless=new")
+            # Chrome's own sandbox can't start inside a container, and the default
+            # 64MB /dev/shm makes it crash on page loads.
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
 
         return options
 
