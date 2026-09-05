@@ -1,11 +1,12 @@
 import os
 
 from dotenv import load_dotenv
+
+load_dotenv()
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.chrome.webdriver import WebDriver
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.remote.webdriver import WebDriver
 
 from config import (
     BOOKING_DATE_OFFSET,
@@ -17,18 +18,13 @@ from config import (
 from pages import SportRickLoginPage
 from utils import BookingOutcomeReporter, logger
 
-load_dotenv()
-
 IS_DEV_ENV = os.environ["ENV"] == "dev"
-# Set by the Docker image to the driver installed at build time. Unset elsewhere,
-# where webdriver_manager is used as before.
-CHROMEDRIVER_PATH = os.environ.get("CHROMEDRIVER_PATH")
 
 
 class Bot:
     def __init__(self):
         self._logger = logger
-        self._driver: WebDriver | None = None
+        self._driver: WebDriver
 
     def start(self, booking_preferences: BookingPreferences):
         self._logger.info(MESSAGES.action_begin)
@@ -54,7 +50,7 @@ class Bot:
     def _stop(self):
         self._logger.info(MESSAGES.action_end)
 
-        if not IS_DEV_ENV and hasattr(self, "_driver"):
+        if self._driver and not IS_DEV_ENV:
             self._driver.quit()
 
     def _book(self, booking_preferences: BookingPreferences):
@@ -86,22 +82,21 @@ class Bot:
         return today in days_to_book_adjusted_for_offset
 
     def _initialize_driver(self) -> WebDriver:
-        driver: WebDriver = webdriver.Chrome(
-            service=self._get_chrome_driver_service(),
-            options=self._get_chrome_driver_options(),
-        )  # type: ignore
+        driver: WebDriver
+
+        if IS_DEV_ENV:
+            driver = webdriver.Chrome(
+                options=self._get_chrome_driver_options(),
+            )  # type: ignore
+        else:
+            driver = webdriver.Remote(
+                command_executor="http://selenium:4444",
+                options=self._get_chrome_driver_options(),
+            )  # type: ignore
+
         driver.set_window_size(1280, 720)
         driver.implicitly_wait(10)
         return driver
-
-    def _get_chrome_driver_service(self) -> ChromeService | None:
-        if IS_DEV_ENV:
-            return None
-
-        if CHROMEDRIVER_PATH:
-            return ChromeService(executable_path=CHROMEDRIVER_PATH)
-
-        return ChromeService(ChromeDriverManager().install())
 
     def _get_chrome_driver_options(self) -> Options:
         options: Options = webdriver.ChromeOptions()  # type: ignore
@@ -116,7 +111,6 @@ class Bot:
             # 64MB /dev/shm makes it crash on page loads.
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-gpu")
 
         return options
 

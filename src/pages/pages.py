@@ -6,8 +6,8 @@ from typing import Self
 
 import pyotp
 from selenium.common import NoSuchElementException
-from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
 from config import BOOKING_DATE_OFFSET, BookingPreferences, Day

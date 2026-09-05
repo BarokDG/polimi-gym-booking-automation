@@ -1,12 +1,19 @@
+name: pgba
 services:
-  booking-bot:
+  selenium:
+    image: selenium/standalone-chrome:latest
+    ports:
+      - "4444:4444"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4444/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3  
+
+  bot:
     build: .
-    image: polimi-gym-booking-automation
-    env_file: .env
-    environment:
-      # The bot books 2 days ahead based on the local weekday, so keep this
-      # matched to the gym's timezone regardless of where the host runs.
-      TZ: Europe/Rome
-    volumes:
-      - ./logs:/app/logs
-    restart: "no"
+    env_file:
+      - .env
+    depends_on:
+      selenium:
+        condition: service_healthy
