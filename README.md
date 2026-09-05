@@ -5,6 +5,7 @@ An automated tool that books gym time slots at Polimi's Giurati Fit Center by si
 ## Table of Contents
 
 - [Overview](#overview)
+- [Demo](#demo)
 - [Project Structure](#project-structure)
 - [Features](#features)
 - [Setup](#setup)
@@ -40,6 +41,12 @@ The tool mimics human behavior by:
 - Typing text with human-like keystroke delays
 
 Upon successful booking, it sends a screenshot confirmation email. If an error occurs, it sends an error report email.
+
+## Demo
+
+A scheduled run on a headless cloud instance — from launch through login, 2FA, slot selection and confirmation, to the screenshot email going out. Shown at 2x speed; the real run takes about a minute.
+
+![Headless booking run](assets/headless-run.gif)
 
 ## Project Structure
 

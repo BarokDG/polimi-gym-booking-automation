@@ -1,0 +1,16 @@
+name: Gym Booking
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: '5 0 * * *'
+      timezone: Europe/Rome
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Test schedule workflow
+        run: echo "Schedule works!"
