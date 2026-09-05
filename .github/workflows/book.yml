@@ -8,7 +8,7 @@ on:
       timezone: Europe/Rome
 
 jobs:
-  test:
+  run:
     runs-on: ubuntu-latest
 
     steps:
@@ -19,7 +19,7 @@ jobs:
         uses: docker/setup-buildx-action@v2
       
       - name: Start containers
-        run: docker compose up -d
+        run: docker compose up --abort-on-container-exit --build --exit-code-from bot
         env:
           ENV: prod
           USERNAME: ${{ secrets.USERNAME }}
