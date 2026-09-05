@@ -6,6 +6,7 @@ from .booking import (
     BookingPreferences,
     Day,
 )
+from .constants import ROME_TZ
 from .themes import DEFAULT_THEME, MESSAGES, THEMES, Theme
 
 __all__ = [
@@ -19,4 +20,6 @@ __all__ = [
     "MESSAGES",
     "THEMES",
     "Theme",
+    # Constants
+    "ROME_TZ",
 ]

@@ -3,7 +3,7 @@ import os
 import smtplib
 from email.message import EmailMessage
 
-from config import BOOKING_DATE_OFFSET, MESSAGES
+from config import BOOKING_DATE_OFFSET, MESSAGES, ROME_TZ
 
 from .decorators import log_call
 
@@ -64,7 +64,7 @@ class BookingOutcomeReporter:
 
     def _format_booking_date(self):
         booking_date = (
-            dt.datetime.now() + dt.timedelta(days=BOOKING_DATE_OFFSET)
+            dt.datetime.now(ROME_TZ) + dt.timedelta(days=BOOKING_DATE_OFFSET)
         ).strftime("%A %B %d")
         return booking_date
 

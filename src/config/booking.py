@@ -5,6 +5,8 @@ from enum import Enum
 
 from attr import dataclass
 
+from .constants import ROME_TZ
+
 # The gym allows bookings for 2 days in advance, so we need to use this offset to select the correct date for booking.
 BOOKING_DATE_OFFSET = 2
 
@@ -26,11 +28,11 @@ class Day(Enum):
 
     @classmethod
     def today(cls) -> "Day":
-        return cls(dt.datetime.today().weekday())
+        return cls(dt.datetime.now(ROME_TZ).weekday())
 
     @classmethod
     def day_to_book(cls) -> "Day":
-        return cls((dt.datetime.today().weekday() + BOOKING_DATE_OFFSET) % 7)
+        return cls((dt.datetime.now(ROME_TZ).weekday() + BOOKING_DATE_OFFSET) % 7)
 
 
 class WeekdayAvailableTimeSlots(Enum):
