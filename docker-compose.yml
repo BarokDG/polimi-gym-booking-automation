@@ -12,13 +12,14 @@ services:
 
   bot:
     build: .
-    env:
-      ENV: ${ENV}
+    environment:
+      ENV: prod
       USERNAME: ${USERNAME}
       PASSWORD: ${PASSWORD}
       DESTINATION_EMAIL_ADDRESS: ${DESTINATION_EMAIL_ADDRESS}
       SMTP_EMAIL_ADDRESS: ${SMTP_EMAIL_ADDRESS}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
+      TOKEN: ${TOKEN}
     depends_on:
       selenium:
         condition: service_healthy

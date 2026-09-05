@@ -27,3 +27,4 @@ jobs:
           DESTINATION_EMAIL_ADDRESS: ${{ secrets.DESTINATION_EMAIL_ADDRESS }}
           SMTP_EMAIL_ADDRESS: ${{ secrets.SMTP_EMAIL_ADDRESS }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          TOKEN: ${{ secrets.TOKEN }}
