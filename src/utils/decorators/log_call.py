@@ -1,4 +1,5 @@
-from typing import Callable, ParamSpec, TypeVar
+from collections.abc import Callable
+from typing import ParamSpec, TypeVar
 
 from config.themes import MESSAGES
 
