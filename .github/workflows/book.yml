@@ -10,6 +10,7 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
+    environment: prod
 
     steps:
       - name: Checkout code
@@ -21,7 +22,6 @@ jobs:
       - name: Start containers
         run: docker compose up --abort-on-container-exit --build --exit-code-from bot
         env:
-          ENV: prod
           USERNAME: ${{ secrets.USERNAME }}
           PASSWORD: ${{ secrets.PASSWORD }}
           DESTINATION_EMAIL_ADDRESS: ${{ secrets.DESTINATION_EMAIL_ADDRESS }}
