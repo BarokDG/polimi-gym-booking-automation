@@ -17,6 +17,9 @@ USERNAME = os.environ["USERNAME"]
 PASSWORD = os.environ["PASSWORD"]
 TOKEN = os.environ["TOKEN"]
 
+if not USERNAME or not PASSWORD or not TOKEN:
+    raise ValueError("USERNAME, PASSWORD, and TOKEN environment variables must be set.")
+
 
 class Page(ABC):
     def __init__(self, driver: WebDriver):
