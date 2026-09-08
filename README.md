@@ -9,32 +9,24 @@ An automated tool that books gym time slots at Polimi's Giurati Fit Center by si
 - [Project Structure](#project-structure)
 - [Features](#features)
 - [Setup](#setup)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
+  - [Normal Mode (visible browser)](#normal-mode-visible-browser)
+  - [Headless Mode (no visible browser)](#headless-mode-no-visible-browser)
 - [Configuration](#configuration)
   - [Environment Variables](#environment-variables)
   - [Gmail Setup](#gmail-setup)
 - [Usage](#usage)
 - [Logging](#logging)
-- [Code Architecture](#code-architecture)
 - [Dependencies](#dependencies)
 - [Docker](#docker)
-- [Hosting & Scheduling](#hosting--scheduling)
+- [Deployment](#deployment)
+  - [GitHub Actions (recommended)](#github-actions-recommended)
+  - [Cloud VM](#cloud-vm)
   - [Local Machine](#local-machine)
-  - [Cloud Hosting](#cloud-hosting)
-    - [Timezone Configuration](#timezone-configuration)
-    - [Google Cloud Platform (GCP)](#google-cloud-platform-gcp---compute-engine)
-    - [Amazon Web Services (AWS)](#amazon-web-services-aws---ec2)
-    - [Microsoft Azure](#microsoft-azure---virtual-machines)
-- [Troubleshooting](#troubleshooting)
-  - [Common Issues](#common-issues)
-  - [Development Tips](#development-tips)
-- [Known Limitations](#known-limitations)
 - [Future Enhancements](#future-enhancements)
 
 ## Overview
 
-This project uses Selenium WebDriver to automate the gym booking process on the SportRick platform. It logs into the Polimi system, navigates through the booking flow, handles two-factor authentication via OTP, and automatically books a time slot at the Giurati Fit Center for two days in advance.
+This project uses [selenium](https://www.selenium.dev/) to automate the gym booking process for polimi's giurati gym. It logs into the gym booking portal, navigates through the booking flow, handles two-factor authentication via OTP, and automatically books a time slot at the gym two days in advance.
 
 The tool mimics human behavior by:
 - Adding random delays between actions
@@ -44,7 +36,7 @@ Upon successful booking, it sends a screenshot confirmation email. If an error o
 
 ## Demo
 
-A scheduled run on a headless cloud instance — from launch through login, 2FA, slot selection and confirmation, to the screenshot email going out. Shown at 2x speed; the real run takes about a minute.
+A scheduled run on a headless cloud instance from launch through login, 2FA, slot selection and confirmation, to the screenshot email going out. Shown at 2x speed; the real run takes about a minute.
 
 ![Headless booking run](assets/headless-run.gif)
 
@@ -52,36 +44,61 @@ A scheduled run on a headless cloud instance — from launch through login, 2FA,
 
 ```
 polimi-gym-booking-automation/
-├── README.md              # This file
-├── requirements.txt       # Python package dependencies
-├── src/
-│   ├── main.py            # Main automation script with booking logic
-│   ├── config/            # Configuration modules
-│   │   ├── __init__.py
-│   │   ├── booking.py     # Booking-related configuration
-│   │   └── themes.py      # Text theme configurations for messages
-│   ├── pages/             # Page object models for web automation
-│   │   ├── __init__.py
-│   │   └── pages.py       # Page object implementations
-│   └── utils/             # Utility modules
-│       ├── __init__.py
-│       ├── logger.py      # Logging functionality
-│       ├── reporter.py    # Reporting and email functionality
-│       └── decorators/    # Custom decorators
-│           ├── __init__.py
-│           └── log_call.py # Call logging decorator
+├── README.md               
+├── requirements.txt         
+├── Dockerfile               
+├── docker-compose.yml      
+├── .env.example             # Template for the required environment variables
+├── .gitignore
+├── .github/
+│   └── workflows/
+│       └── book.yml         
+├── assets/
+│   └── headless-run.gif     
+├── logs/                    # Host-mounted log directory (git-ignored)
+│   └── booking_automation.log
+└── src/
+    ├── main.py              # Entry point
+    ├── config/              
+    │   ├── __init__.py      
+    │   ├── booking.py       
+    │   ├── constants.py     
+    │   └── themes.py        # Text theme configurations for messages
+    ├── pages/               
+    │   ├── __init__.py
+    │   └── pages.py         # Page object implementations
+    └── utils/               # Utility modules
+        ├── __init__.py
+        ├── logger.py        # Logging functionality
+        ├── reporter.py      # Reporting and email functionality
+        └── decorators/      # Custom decorators
+            ├── __init__.py
+            └── log_call.py  # Call logging decorator
 ```
 
 ## Setup
 
-### Prerequisites
+The bot runs in one of two modes, chosen by the `ENV` variable. They have different prerequisites, so pick one and follow only that section.
 
-- Python 3.8 or higher
-- Google Chrome browser installed
-- Gmail account with app-specific password configured
-- Polimi credentials
+|                        | Normal mode (`ENV=dev`)                 | Headless mode (`ENV=prod`)                      |
+| ---------------------- | --------------------------------------- | ----------------------------------------------- |
+| Browser                | Chrome on your machine, window visible   | Chromium inside a Selenium container            |
+| Runs on                | Your machine           | Docker Compose                                  |
+| After the run          | Window stays open for inspection         | Containers exit                                 |
+| Requirements     | Python + Chrome                          | Docker only                                     |
 
-### Installation
+Both modes read the same `.env` (see [Configuration](#configuration)) and both need Polimi credentials and a Gmail app password.
+
+### Normal Mode (visible browser)
+
+**Prerequisites**
+
+- Python 3.12 or higher
+- Google Chrome installed
+
+You do not need to install ChromeDriver — Selenium Manager downloads a matching one on first run.
+
+**Installation**
 
 1. Clone the repository:
 ```bash
@@ -99,6 +116,43 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```bash
 pip install -r requirements.txt
 ```
+
+4. Create your `.env` (see [Configuration](#configuration)) and set:
+```
+ENV=dev
+```
+
+5. Run it:
+```bash
+python src/main.py
+```
+
+Chrome opens and you can watch the whole flow. The window is left open when the script finishes, so you can inspect the final page.
+
+### Headless Mode (no visible browser)
+
+**Prerequisites**
+
+- Docker with Compose
+
+**Installation**
+
+1. Clone the repository:
+```bash
+git clone https://www.github.com/barokdg/polimi-gym-booking-automation
+cd polimi-gym-booking-automation
+```
+
+2. Create your `.env` (see [Configuration](#configuration)). Compose reads it to fill in the credentials, and forces `ENV=prod` for the bot itself, so the `ENV` value in your file only affects normal-mode runs.
+
+3. Build and run:
+```bash
+docker compose up 
+```
+
+Compose starts two containers: `selenium`, a Selenium Grid with headless Chrome, and `bot`, which waits for the grid to pass its health check and then drives it over the Compose network at `http://selenium:4444`. The bot exits once the booking is done; the grid stays up, so stop it with `docker compose down`.
+
+Because that hostname only resolves inside the Compose network, `ENV=prod` won't work with a plain `python src/main.py` — the bot has no browser of its own to fall back on. Run headless through Compose, or point a Selenium server at `selenium:4444` yourself.
 
 ## Configuration
 
@@ -137,15 +191,19 @@ To send emails via Gmail:
 
 ## Usage
 
-Run the automation script from the project root:
+Start a run from the project root, with the command for your mode:
 
 ```bash
-python src/main.py
+python src/main.py    # normal mode
 ```
 
-The script will:
+```bash
+docker compose up     # headless mode
+```
+
+Either way, the script will:
 1. Check if today is a valid booking day (Monday-Friday in my case, adjusted for 2-day advance booking)
-2. Initialize a Chrome WebDriver with appropriate options
+2. Initialize a Chrome WebDriver — local in normal mode, remote against the Selenium container in headless mode
 3. Log into SportRick platform
 4. Authenticate with Polimi credentials
 5. Enter OTP for 2FA verification
@@ -158,85 +216,23 @@ The script will:
 
 Log messages are printed to stdout during execution and automatically written to `booking_automation.log`. 
 
-## Code Architecture
-
-A scheduler on the host starts a one-shot container. The bot decides whether today is a booking day before it ever launches a browser, so most runs cost nothing but a log line.
-
-```mermaid
-flowchart TB
-    cron["Host cron<br/>docker compose run --rm booking-bot"]
-    envfile[".env<br/>credentials, TOTP secret"]
-
-    subgraph container["Docker container - TZ Europe/Rome, non-root"]
-        bot["Bot.start<br/>src/main.py"]
-        cfg["config<br/>BOOKING_PREFERENCES, Day, BOOKING_DATE_OFFSET"]
-        gate{"Is today a<br/>booking day?"}
-        skip["Log and exit"]
-        pages["pages<br/>page objects"]
-        chrome["Chromium headless<br/>driven via chromium-driver"]
-        rep["BookingOutcomeReporter"]
-        log["logger"]
-    end
-
-    portal["SportRick and Polimi portal"]
-    smtp["Gmail SMTP"]
-    inbox["Your inbox<br/>outcome plus screenshot"]
-    volume["./logs volume"]
-
-    cron --> bot
-    envfile -.->|injected at runtime| bot
-    cfg --> gate
-    bot --> gate
-    gate -->|no| skip
-    gate -->|yes| pages
-    pages --> chrome
-    chrome <-->|HTTPS| portal
-    pages --> rep
-    rep --> smtp
-    smtp --> inbox
-    bot --> log
-    log --> volume
-    log --> stdout["stdout, via docker logs"]
-```
-
-The browser work is organized with page objects, each returning the next page in the flow so `_book` reads as the booking journey itself:
-
-```mermaid
-flowchart LR
-    A["SportRickLoginPage"] -->|"accept_cookies, login"| B["PolimiLoginPage"]
-    B -->|"login"| C["VerifyOTPPage"]
-    C -->|"verify, TOTP via pyotp"| D["DashboardPage"]
-    D -->|"accept_cookies, go_to_bookings"| E["BookingsPage"]
-    E -->|"new_booking"| F["NewBookingPage"]
-    F -->|"select_giurati_fit_center"| G["GiuratiFitCenterBookingPage"]
-    G -->|"book_time_slot"| H["ConfirmTimeSlotPage"]
-    H -->|"confirm, decline another slot"| I["DashboardPage<br/>screenshot emailed"]
-```
-
-- **Page**: Base class for all page interactions with common utilities
-- **SportRickLoginPage**: Handles SportRick platform login and cookie acceptance
-- **PolimiLoginPage**: Handles Polimi credential authentication
-- **VerifyOTPPage**: Generates and enters TOTP codes
-- **DashboardPage**: Navigates to bookings section
-- **BookingsPage**: Initiates new booking flow
-- **NewBookingPage**: Selects the Giurati Fit Center
-- **GiuratiFitCenterBookingPage**: Selects available time slot
-- **ConfirmTimeSlotPage**: Confirms booking and declines additional slots
-- **EmailSMTPClient**: Handles SMTP email operations
-- **EmailBookingOutcome**: Sends success/error emails
 
 ## Dependencies
 
 See [requirements.txt](requirements.txt) for the complete list. Key dependencies:
 
-- **selenium**: Web automation framework
-- **webdriver-manager**: Automatically manages ChromeDriver versions
+- **selenium**: Web automation framework; its bundled Selenium Manager also resolves ChromeDriver in normal mode
 - **python-dotenv**: Loads environment variables from .env
 - **pyotp**: Generates TOTP codes for 2FA
 
 ## Docker
 
-Running in Docker means you don't have to install a browser, Python, or match ChromeDriver versions on the host. The image ships Debian's Chromium with its version-matched `chromium-driver`, so no driver is fetched at runtime, and is fixed to `Europe/Rome` so the booking date is always computed against gym-local time.
+Running in Docker means you don't have to install a browser, Python, or a matching ChromeDriver on the host. The work is split across two containers, defined in `docker-compose.yml`:
+
+- **`selenium`** — the official `selenium/standalone-chrome` image, which bundles headless Chrome and its matching driver behind a Selenium Grid endpoint on port 4444. It has a health check, and the bot won't start until it passes.
+- **`bot`** — built from the `Dockerfile`, a plain `python:3.12-slim` with just the project's dependencies and `src/`. It carries no browser of its own; it drives the grid remotely at `http://selenium:4444`.
+
+The booking date doesn't depend on either container's clock — `Day.today()` computes it against `Europe/Rome` in code (`src/config/constants.py`), so the containers can run on a UTC host without drifting.
 
 ### Build
 
@@ -244,201 +240,94 @@ Running in Docker means you don't have to install a browser, Python, or match Ch
 docker compose build
 ```
 
-The build works natively on both `linux/amd64` and `linux/arm64` — Chromium is packaged for both, so an Apple Silicon machine and an amd64 cloud VM each build and run without emulation. To produce an image for the other architecture, or a multi-arch image for a registry:
-
-```bash
-docker buildx build --platform linux/amd64,linux/arm64 -t <registry>/polimi-gym-booking-automation --push .
-```
-
-Dependencies install ahead of the source copy, so editing `src` never reinstalls them and neither one touches the Chromium layer.
-
 ### Run
 
-Create a `.env` first (see [Environment Variables](#environment-variables)). It is deliberately excluded from the image via `.dockerignore` and injected at runtime instead, so no secret is ever baked into a layer. Set `ENV=prod` — `dev` mode keeps a visible browser open, which cannot work headlessly.
+Create a `.env` first (see [Environment Variables](#environment-variables)). Compose sets `ENV=prod` for the bot.
 
 ```bash
-docker compose run --rm booking-bot
+docker compose up
 ```
 
-The container performs a single booking run and exits, so schedule it externally rather than leaving it running. Logs go to stdout (`docker logs`) and to `./logs/booking_automation.log` on the host.
+The bot performs a booking run and exits; the grid stays up until you run `docker compose down`.
 
-To run it without Compose:
+Logs go to stdout (`docker logs`) and to `booking_automation.log` inside the bot container, which disappears with it. To keep them on the host, mount a directory and point `LOG_FILE` at it:
+
+```yaml
+  bot:
+    environment:
+      LOG_FILE: /app/logs/booking_automation.log
+    volumes:
+      - ./logs:/app/logs
+```
+
+## Deployment
+
+### GitHub Actions (recommended)
+
+Nothing to host and nothing to keep powered on. The workflow in `.github/workflows/book.yml` does the whole job: it checks the repo out, builds the images, and runs the containers.
+
+1. Fork the repository. (If you'd rather keep your copy private, clone it and push to a new private repo instead — a fork of a public repo can't be made private.)
+2. Open the **Actions** tab and enable workflows. Forks start with them disabled, so the schedule never fires until you do this.
+3. Under **Settings → Environments**, create an environment named `prod` — the job declares `environment: prod`.
+4. Add your credentials there as secrets: `USERNAME`, `PASSWORD`, `TOKEN`, `DESTINATION_EMAIL_ADDRESS`, `SMTP_EMAIL_ADDRESS`, `SMTP_PASSWORD`. There's no `ENV` secret — Compose sets it for the bot. Secrets are never copied from the upstream repo, and yours stay invisible to it.
+5. Go to **Actions → Booking → Run workflow** to trigger a run by hand and confirm the setup works end to end. After that the schedule takes over, and you get the same confirmation email as always.
+
+Two things worth knowing about scheduled workflows:
+
+- **Runs can start late.** Scheduled jobs queue alongside everyone else's and are frequently delayed, occasionally by a lot.
+- **They pause after 60 days of repo inactivity.** Any push, or a manual run, re-enables the schedule.
+
+### Cloud VM
+
+Worth it if you'd rather not depend on GitHub's queue. A VM has no display, so it runs [headless mode](#headless-mode-no-visible-browser) and needs only Docker. These steps are for GCP Compute Engine; EC2 and Azure VMs work the same way.
+
+1. Create a VM instance with Ubuntu 26.04 LTS (Minimal), or another distro of your choice.
+2. Connect via SSH and install what's needed:
 
 ```bash
-docker run --rm --env-file .env -e TZ=Europe/Rome -v "$PWD/logs:/app/logs" polimi-gym-booking-automation
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y git cron vim
+
+# Docker with the Compose plugin
+curl -fsSL https://get.docker.com | sudo sh
+
+# Run docker without sudo (log out and back in afterwards)
+sudo usermod -aG docker "$USER"
 ```
 
-### Scheduling the container
-
-Have host cron start the container, keeping the container itself a one-shot job. To run daily at 08:00:
-
-```
-0 8 * * * cd /home/username/polimi-gym-booking-automation && /usr/bin/docker compose run --rm booking-bot >> /var/log/gym-booking-cron.log 2>&1
-```
-
-The host's own timezone still decides *when* cron fires, so set it as described in [Timezone Configuration](#timezone-configuration). `TZ` inside the container only controls which date the bot books for.
-
-## Hosting & Scheduling
-
-### Local Machine
-
-To run this script automatically at scheduled intervals on your local machine, use:
-
-#### macOS/Linux (cron)
-
-```bash
-crontab -e
-```
-
-Add a line to run daily at a specific time. For example, run at 8:00 AM:
-
-```
-0 8 * * * DISPLAY=:0 /home/username/polimi-gym-booking-automation/.venv/bin/python3 /home/username/polimi-gym-booking-automation/src/main.py
-```
-
-**⚠️ Important**: Your computer **must be powered on** for crontab to execute the scheduled task. If you find that this is not the case or have a workaround, please [create an issue](../../issues) or [submit a PR](../../pulls).
-
-#### Windows (Task Scheduler)
-
-Create a task that runs the script at your desired interval using Windows Task Scheduler.
-
-### Cloud Hosting
-
-Cloud hosting ensures the script runs reliably without requiring your personal machine to be on.
-
-#### Timezone Configuration
-
-To ensure that cron jobs run at the correct local time, set the timezone on your cloud instance to 'Europe/Rome'. The default timezone is usually UTC.
-
-**For all cloud providers, set the timezone using one of these methods:**
-
-**Method 1: Using timedatectl (Recommended for Ubuntu/Debian)**
+3. Set the machine's timezone, so cron fires at the hour you expect — instances usually default to UTC:
 
 ```bash
 sudo timedatectl set-timezone Europe/Rome
 ```
 
-Verify the timezone was set correctly:
-
-```bash
-timedatectl
-```
-
-**Method 2: Using /etc/timezone**
-
-```bash
-echo "Europe/Rome" | sudo tee /etc/timezone
-sudo dpkg-reconfigure -f noninteractive tzdata
-```
-
-**Verify your cron jobs respect the timezone** by checking that they run at the expected time. You can test this by setting a cron job to run every minute and checking the logs:
-
-```bash
-* * * * * date >> /tmp/cron_test.log
-```
-
-Then check the log:
-
-```bash
-cat /tmp/cron_test.log
-```
-
-The timestamps should show Europe/Rome time (UTC+1 or UTC+2 depending on daylight saving time).
-
-#### Google Cloud Platform (GCP) - Compute Engine
-
-**Setup Instructions:**
-
-1. Create a Compute Engine VM instance with Ubuntu 26.04 LTS (Minimal). Feel free to choose another VM.
-2. Connect to the instance via SSH
-3. Install required dependencies:
-
-```bash
-# Update package manager
-sudo apt update && sudo apt upgrade -y
-
-# Install git
-sudo apt install -y git
-
-# Install cron
-sudo apt install -y cron
-
-# Install vim or a text editor of your choice
-sudo apt install -y vim
-
-# Install Python and venv
-sudo apt install -y python3.14 python3.14-venv
-
-# Install Chrome and dependencies for Selenium
-wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-sudo apt install google-chrome-stable_current_amd64.deb
-```
-
-4. Clone the repository:
+4. Clone the repository and write your `.env`:
 
 ```bash
 git clone https://www.github.com/barokdg/polimi-gym-booking-automation.git
 cd polimi-gym-booking-automation
-```
-
-5. Create and activate virtual environment:
-
-```bash
-python3.14 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-6. Configure `.env` file with your credentials:
-
-```bash
 vim .env
 ```
 
-7. Set up crontab:
+5. Confirm a run works before scheduling it:
 
 ```bash
-crontab -e
+docker compose up --abort-on-container-exit --exit-code-from bot
 ```
 
-Add the scheduling line (e.g., run at 8:00 AM UTC):
+6. Add it to `crontab -e`, here at 08:00 daily:
 
 ```
-0 8 * * * DISPLAY=:0 /home/username/polimi-gym-booking-automation/.venv/bin/python3 /home/username/polimi-gym-booking-automation/src/main.py
+0 8 * * * cd /home/username/polimi-gym-booking-automation && /usr/bin/docker compose up --abort-on-container-exit --exit-code-from bot >> /var/log/gym-booking-cron.log 2>&1
 ```
 
-**Cost Estimate**: A GCP e2-micro instance with minimal Ubuntu is eligible for the free tier (up to 730 hours/month for the first 12 months).
+### Local Machine
 
-#### Amazon Web Services (AWS) - EC2
+Same as the VM setup, minus the provider: install Docker, then schedule `docker compose up --abort-on-container-exit --exit-code-from bot` with cron on macOS/Linux or Task Scheduler on Windows.
 
-*Please refer to the GCP setup above as a general reference, adapting as needed for AWS EC2 instances.*
-
-#### Microsoft Azure - Virtual Machines
-
-*Please refer to the GCP setup above as a general reference, adapting as needed for Azure VMs.*
-
-## Troubleshooting
-
-### Common Issues
-
-1. **ElementClickInterceptedException**: Cookie consent buttons may block interaction. The script handles this on certain pages; verify selectors are current if this persists.
-
-2. **No time slots available**: If all slots are booked, the script will raise an exception, which is caught and reported via email.
-
-3. **OTP generation fails**: Ensure your TOKEN environment variable contains a valid TOTP secret (usually a base32-encoded string).
-
-4. **Email not sent**: Verify Gmail app-specific password is correct and 2FA is enabled on the Gmail account.
-
-5. **ChromeDriver issues**: The webdriver-manager handles ChromeDriver automatically, but ensure Chrome browser is installed.
-
-### Development Tips
-
-- Set `ENV=dev` to keep the browser window open for inspection
-- Use `booking_automation.log` to review execution history
+**⚠️ Your computer must be awake at that time** for the job to fire, which is the main reason to prefer one of the options above. If you have a workaround, please [create an issue](../../issues) or [submit a PR](../../pulls).
 
 ## Future Enhancements
 
 - Implement fallback logic to book alternative time slots if preferred slot is unavailable
-- Colorize terminal output
-- Containerize application
 - Connect with a telegram bot to manage bookings and receive notifications
